@@ -1,0 +1,52 @@
+[project]
+name = "sentinel"
+version = "0.1.0"
+description = "Production-grade fraud detection platform"
+authors = [{ name = "Robert Jean Pierre" }]
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pytest>=8.3.0",
+    "pytest-cov>=6.0.0",
+    "pre-commit>=4.0.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["notebooks", "frontend", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP", "N", "SIM", "RUF"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+exclude = ["notebooks/", "frontend/", ".venv/"]
+
+[[tool.mypy.overrides]]
+module = ["shap.*", "lightgbm.*", "xgboost.*", "imblearn.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["ml/tests", "api/tests", "tests"]
+python_files = ["test_*.py"]
+addopts = ["-v", "--strict-markers", "--tb=short", "--cov-report=term-missing"]
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+]

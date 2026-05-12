@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Node / frontend
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
+
+# IDEs
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+.idea/
+*.swp
+
+# OS
+Thumbs.db
+
+# ML artifacts (DVC handles data)
+mlruns/
+mlartifacts/
+data/raw/
+data/processed/
+models/*.pkl
+models/*.joblib
+!models/.gitkeep
+
+# DVC
+.dvc/cache
+.dvc/tmp
+
+# Secrets
+secrets/
+*.pem
+*.key
