@@ -42,8 +42,12 @@ Thumbs.db
 # ML artifacts (DVC handles data)
 mlruns/
 mlartifacts/
-data/raw/
-data/processed/
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/raw/*.dvc
+!data/processed/*.dvc
 models/*.pkl
 models/*.joblib
 !models/.gitkeep

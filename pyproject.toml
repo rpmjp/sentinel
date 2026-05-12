@@ -14,6 +14,8 @@ dev = [
     "pytest>=8.3.0",
     "pytest-cov>=6.0.0",
     "pre-commit>=4.0.0",
+    "dvc[s3]>=3.55.0",
+    "kaggle>=2.1.2",
 ]
 
 [tool.ruff]
