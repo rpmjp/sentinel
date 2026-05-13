@@ -34,6 +34,8 @@ dev = [
     "pre-commit>=4.0.0",
     "dvc[s3]>=3.55.0",
     "kaggle>=2.1.2",
+    "httpx>=0.27",
+    "pytest-asyncio>=0.24",
 ]
 
 [tool.ruff]
