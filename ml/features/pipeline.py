@@ -46,13 +46,22 @@ def prepare(
     raw: pd.DataFrame,
     train_frac: float = 0.70,
     val_frac: float = 0.15,
+    use_aggregates: bool = False,
 ) -> PreparedData:
-    """Run the full data prep pipeline."""
+    """Run the full data prep pipeline.
+
+    Args:
+        use_aggregates: include sender/receiver historical aggregates.
+            Set False for leakage ablation studies.
+    """
     raw = validate_raw(raw)
 
-    # Temporal aggregates first (need nameOrig/nameDest + step)
-    df = compute_sender_aggregates(raw)
-    df = compute_receiver_aggregates(df)
+    if use_aggregates:
+        # Temporal aggregates (need nameOrig/nameDest + step)
+        df = compute_sender_aggregates(raw)
+        df = compute_receiver_aggregates(df)
+    else:
+        df = raw.copy()
 
     # Per-row features
     df = add_row_features(df)

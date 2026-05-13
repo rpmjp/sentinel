@@ -149,6 +149,7 @@ def main() -> None:
     parser.add_argument("--model", choices=["lightgbm", "xgboost", "logreg"], default="lightgbm")
     parser.add_argument("--sample-frac", type=float, default=1.0)
     parser.add_argument("--data-path", type=Path, default=DATA_PATH)
+    parser.add_argument("--with-aggregates", action="store_true", help="Ablation: include sender/receiver aggregates (default off, see model card)")
     args = parser.parse_args()
 
     log.info("Loading %s", args.data_path)
@@ -160,8 +161,8 @@ def main() -> None:
         raw = pd.concat([fraud, non_fraud]).sort_values("step").reset_index(drop=True)
         log.info("Sampled to %d rows (%d fraud)", len(raw), int(raw["isFraud"].sum()))
 
-    log.info("Preparing data")
-    data = prepare(raw)
+    log.info("Preparing data (aggregates=%s)", args.with_aggregates)
+    data = prepare(raw, use_aggregates=args.with_aggregates)
     log.info(
         "Splits: train=%d (%d fraud, %.4f%%) val=%d (%d fraud, %.4f%%) test=%d (%d fraud, %.4f%%)",
         len(data.X_train), data.y_train.sum(), 100 * data.y_train.mean(),
@@ -181,6 +182,7 @@ def main() -> None:
         mlflow.set_tag("model", args.model)
         mlflow.log_param("sample_frac", args.sample_frac)
         mlflow.log_param("scale_pos_weight", scale_pos_weight)
+        mlflow.log_param("use_aggregates", args.with_aggregates)
         mlflow.log_param("n_features", len(data.feature_names))
         mlflow.log_param("n_train", len(data.X_train))
         mlflow.log_param("n_val", len(data.X_val))
