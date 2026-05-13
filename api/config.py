@@ -25,8 +25,8 @@ class Settings(BaseSettings):
 
     # Auth
     jwt_secret: str = Field(
-        default="dev-secret-change-in-prod",
-        description="HMAC secret for JWT signing",
+        default="dev-secret-change-in-prod-must-be-at-least-32-bytes-long",
+        description="HMAC secret for JWT signing (override via JWT_SECRET env var in prod)",
     )
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24  # 24 hours

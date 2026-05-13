@@ -1,4 +1,4 @@
-.PHONY: help install lint format typecheck test test-cov clean train mlflow-ui serve frontend dev
+.PHONY: help install lint format typecheck test test-cov clean train mlflow-ui seed serve frontend dev
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -34,6 +34,9 @@ train:  ## Train the fraud detection model (use MODEL=lightgbm|xgboost|logreg, S
 
 mlflow-ui:  ## Open MLflow UI at http://localhost:5000
 	uv run mlflow ui --backend-store-uri file:./mlruns
+
+seed:  ## Seed demo tenant, users, and model_version into Postgres
+	uv run python -m scripts.seed_demo
 
 serve:  ## Start FastAPI dev server on http://localhost:8000
 	uv run uvicorn api.main:app --reload --port 8000
