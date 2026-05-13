@@ -1,0 +1,10 @@
+{
+  "roc_auc": 0.998170043361076,
+  "pr_auc": 0.9917029061535068,
+  "precision_at_default": 0.972244250594766,
+  "recall_at_default": 0.9951298701298701,
+  "best_threshold": 0.01,
+  "best_net_savings": 1225825.0,
+  "n_positive": 1232,
+  "n_total": 954394
+}
