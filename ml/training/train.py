@@ -9,6 +9,12 @@ Usage:
 
 from __future__ import annotations
 
+import json
+
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.frozen import FrozenEstimator
+from sklearn.metrics import precision_recall_curve
+
 import argparse
 import logging
 import subprocess
@@ -72,7 +78,7 @@ def _fit_lightgbm(
         eval_names=["train", "val"],
         eval_metric="average_precision",
         callbacks=[
-            early_stopping(stopping_rounds=50, verbose=True),
+            early_stopping(stopping_rounds=100, verbose=True),
             log_evaluation(period=25),
         ],
     )
@@ -180,17 +186,26 @@ def main() -> None:
         mlflow.log_param("n_val", len(data.X_val))
         mlflow.log_param("n_test", len(data.X_test))
 
-        log.info("Fitting %s", args.model)
+        log.info("Fitting %s (base model)", args.model)
         if args.model == "lightgbm":
-            model = _fit_lightgbm(data.X_train, data.y_train, data.X_val, data.y_val, scale_pos_weight)
+            base_model = _fit_lightgbm(data.X_train, data.y_train, data.X_val, data.y_val, scale_pos_weight)
         elif args.model == "xgboost":
-            model = _fit_xgboost(data.X_train, data.y_train, data.X_val, data.y_val, scale_pos_weight)
+            base_model = _fit_xgboost(data.X_train, data.y_train, data.X_val, data.y_val, scale_pos_weight)
         else:
-            model = _fit_logreg(data.X_train, data.y_train)
+            base_model = _fit_logreg(data.X_train, data.y_train)
 
-        # Log per-iteration curves (boosting models only)
+        # Log per-iteration curves (boosting models only) BEFORE wrapping in calibrator
         if args.model in {"lightgbm", "xgboost"}:
-            _log_per_iteration_curves(model, args.model)
+            _log_per_iteration_curves(base_model, args.model)
+
+        # Probability calibration via isotonic regression on the val set.
+        # Boosting models output ranking-good but probability-bad scores.
+        # Calibration ensures predicted scores are actual probabilities,
+        # which matters for threshold tuning, cost-based decisions, and SHAP.
+        log.info("Calibrating probabilities (isotonic, prefit)")
+        model = CalibratedClassifierCV(FrozenEstimator(base_model), method="isotonic")
+        model.fit(data.X_val, data.y_val)
+        mlflow.log_param("calibration_method", "isotonic")
 
         for p, v in (model.get_params(deep=False) if args.model != "logreg" else {}).items():
             mlflow.log_param(f"model__{p}", v)
@@ -200,6 +215,28 @@ def main() -> None:
         val_report = evaluate(np.asarray(data.y_val), val_score)
         for k, v in val_report.to_dict().items():
             mlflow.log_metric(f"val_{k}", v)
+
+        # Log full PR + cost curves for the threshold tuner UI
+        precisions, recalls, pr_thresholds = precision_recall_curve(data.y_val, val_score)
+        cost_curve = []
+        for t in np.linspace(0.01, 0.99, 99):
+            y_pred = (val_score >= t).astype(int)
+            from ml.training.metrics import net_savings
+            cost_curve.append({
+                "threshold": float(t),
+                "precision": float(((y_pred == 1) & (data.y_val == 1)).sum() / max(y_pred.sum(), 1)),
+                "recall": float(((y_pred == 1) & (data.y_val == 1)).sum() / max(data.y_val.sum(), 1)),
+                "net_savings": float(net_savings(np.asarray(data.y_val), y_pred)),
+            })
+        curves_path = MODELS_DIR / f"{args.model}_val_curves.json"
+        curves_path.write_text(json.dumps({
+            "pr_curve": [
+                {"precision": float(p), "recall": float(r), "threshold": float(t)}
+                for p, r, t in zip(precisions[:-1], recalls[:-1], pr_thresholds, strict=False)
+            ],
+            "cost_curve": cost_curve,
+        }))
+        mlflow.log_artifact(str(curves_path), artifact_path="curves")
 
         # Test set is logged to MLflow but NOT printed — peeking at test
         # during model selection is leakage. We look at test only once,
@@ -215,9 +252,9 @@ def main() -> None:
             val_report.best_net_savings, val_report.best_threshold,
         )
 
-        # Feature importance (boosting models)
-        if hasattr(model, "feature_importances_"):
-            importances = pd.Series(model.feature_importances_, index=data.feature_names)
+        # Feature importance — pull from the base model (CalibratedClassifierCV wraps it)
+        if hasattr(base_model, "feature_importances_"):
+            importances = pd.Series(base_model.feature_importances_, index=data.feature_names)
             top = importances.sort_values(ascending=False).head(15)
             log.info("Top 15 features by importance:\n%s", top.to_string())
 

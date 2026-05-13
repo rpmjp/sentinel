@@ -16,9 +16,9 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from ml.features.aggregates import compute_sender_aggregates
+from ml.features.aggregates import compute_receiver_aggregates, compute_sender_aggregates
 from ml.features.schemas import validate_raw
-from ml.features.splits import split_stratified_temporal
+from ml.features.splits import split_stratified
 from ml.features.transforms import add_row_features, drop_leakage
 
 TARGET = "isFraud"
@@ -50,8 +50,9 @@ def prepare(
     """Run the full data prep pipeline."""
     raw = validate_raw(raw)
 
-    # Temporal aggregates first (needs nameOrig + step)
+    # Temporal aggregates first (need nameOrig/nameDest + step)
     df = compute_sender_aggregates(raw)
+    df = compute_receiver_aggregates(df)
 
     # Per-row features
     df = add_row_features(df)
@@ -59,10 +60,8 @@ def prepare(
     # Drop leakage columns
     df = drop_leakage(df)
 
-    # Stratified-temporal split (uses step + isFraud, do this BEFORE dropping step)
-    train, val, test = split_stratified_temporal(
-        df, train_frac=train_frac, val_frac=val_frac
-    )
+    # Stratified random split. See ml/features/splits.py for rationale.
+    train, val, test = split_stratified(df, train_frac=train_frac, val_frac=val_frac)
 
     # One-hot encode categorical columns. Fit on train only.
     train_encoded = pd.get_dummies(train, columns=CATEGORICAL, dtype=float)

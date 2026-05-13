@@ -52,3 +52,55 @@ def compute_sender_aggregates(df: pd.DataFrame) -> pd.DataFrame:
     out["sender_amount_std_prior"] = out["sender_amount_std_prior"].fillna(0.0)
 
     return out.sort_index()
+
+def compute_receiver_aggregates(df: pd.DataFrame) -> pd.DataFrame:
+    """Historical aggregates per receiver using only past rows.
+
+    In PaySim and real-world fraud, receivers (cashout accounts) are reused
+    across fraud rings far more than senders. This often carries stronger
+    signal than sender aggregates.
+
+    Args:
+        df: must contain nameDest, step, amount.
+
+    Returns:
+        New DataFrame with added columns:
+            - receiver_txn_count_prior: int
+            - receiver_amount_mean_prior: float
+            - receiver_amount_max_prior: float
+            - receiver_unique_senders_prior: int (count of distinct prior senders)
+    """
+    out = df.sort_values(["nameDest", "step"]).copy()
+
+    grp_amt = out.groupby("nameDest", sort=False)["amount"]
+    shifted = grp_amt.shift(1)
+    expanding = shifted.groupby(out["nameDest"], sort=False).expanding()
+
+    out["receiver_txn_count_prior"] = expanding.count().reset_index(level=0, drop=True)
+    out["receiver_amount_mean_prior"] = expanding.mean().reset_index(level=0, drop=True)
+    out["receiver_amount_max_prior"] = expanding.max().reset_index(level=0, drop=True)
+
+    # Count of distinct prior senders per receiver.
+    # Approach: factorize sender ids to integer codes, then for each
+    # (nameDest, sender_code) mark the FIRST occurrence with 1 else 0,
+    # shift by 1 within nameDest, and cumsum. That gives the count of
+    # distinct senders seen STRICTLY before each row.
+    out["_sender_code"] = pd.factorize(out["nameOrig"])[0]
+    first_seen = ~out.duplicated(subset=["nameDest", "_sender_code"], keep="first")
+    first_seen_int = first_seen.astype(int)
+    out["receiver_unique_senders_prior"] = (
+        first_seen_int.groupby(out["nameDest"], sort=False)
+        .shift(1)
+        .fillna(0)
+        .groupby(out["nameDest"], sort=False)
+        .cumsum()
+        .astype(int)
+    )
+    out = out.drop(columns=["_sender_code"])
+
+    out["receiver_txn_count_prior"] = out["receiver_txn_count_prior"].fillna(0).astype(int)
+    out["receiver_amount_mean_prior"] = out["receiver_amount_mean_prior"].fillna(0.0)
+    out["receiver_amount_max_prior"] = out["receiver_amount_max_prior"].fillna(0.0)
+    out["receiver_unique_senders_prior"] = out["receiver_unique_senders_prior"].fillna(0).astype(int)
+
+    return out.sort_index()

@@ -9,6 +9,8 @@ from __future__ import annotations
 import pandas as pd
 
 from ml.features.aggregates import compute_sender_aggregates
+from ml.features.aggregates import compute_receiver_aggregates
+
 
 
 def test_first_txn_has_no_prior_history() -> None:
@@ -78,3 +80,19 @@ def test_preserves_original_row_count() -> None:
     )
     result = compute_sender_aggregates(df)
     assert len(result) == 5
+
+def test_receiver_aggregates_only_see_past_rows() -> None:
+    df = pd.DataFrame(
+        {
+            "step": [1, 2, 3, 4],
+            "nameOrig": ["C1", "C2", "C3", "C4"],
+            "nameDest": ["D1", "D1", "D1", "D1"],
+            "amount": [100.0, 200.0, 300.0, 400.0],
+        }
+    )
+    result = compute_receiver_aggregates(df).sort_values("step")
+    assert result.iloc[0]["receiver_txn_count_prior"] == 0
+    assert result.iloc[1]["receiver_txn_count_prior"] == 1
+    assert result.iloc[1]["receiver_amount_mean_prior"] == 100.0
+    assert result.iloc[2]["receiver_unique_senders_prior"] == 2
+    assert result.iloc[3]["receiver_unique_senders_prior"] == 3
