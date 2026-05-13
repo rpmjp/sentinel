@@ -35,8 +35,8 @@ train:  ## Train the fraud detection model (use MODEL=lightgbm|xgboost|logreg, S
 mlflow-ui:  ## Open MLflow UI at http://localhost:5000
 	uv run mlflow ui --backend-store-uri file:./mlruns
 
-serve:  ## Start FastAPI dev server (Phase 2)
-	@echo "Not yet implemented — Phase 2, Step 2.2"
+serve:  ## Start FastAPI dev server on http://localhost:8000
+	uv run uvicorn api.main:app --reload --port 8000
 
 frontend:  ## Start frontend dev server (Phase 3)
 	@echo "Not yet implemented — Phase 3, Step 3.1"

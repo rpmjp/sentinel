@@ -1,0 +1,66 @@
+"""Sentinel FastAPI application entrypoint.
+
+Run locally with:
+    make serve
+or:
+    uv run uvicorn api.main:app --reload --port 8000
+"""
+
+from __future__ import annotations
+
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from api.config import get_settings
+from api.routers import health
+
+settings = get_settings()
+
+logging.basicConfig(
+    level=settings.log_level,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+log = logging.getLogger("sentinel.api")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Startup/shutdown hooks. Real work added in later steps."""
+    log.info("Sentinel API starting (env=%s)", settings.env)
+    yield
+    log.info("Sentinel API stopping")
+
+
+app = FastAPI(
+    title="Sentinel",
+    description="Production-grade fraud detection platform.",
+    version="0.1.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    lifespan=lifespan,
+)
+
+# CORS — wide open for dev. Tighten in Phase 4 deploy.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(health.router)
+
+
+@app.get("/", include_in_schema=False)
+async def root() -> dict[str, str]:
+    return {
+        "name": "Sentinel",
+        "version": app.version,
+        "docs": "/docs",
+    }
