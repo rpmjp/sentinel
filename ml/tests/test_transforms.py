@@ -33,7 +33,7 @@ def _sample_df() -> pd.DataFrame:
 def test_add_row_features_creates_expected_columns() -> None:
     result = add_row_features(_sample_df())
     expected = {
-        "hour", "day", "is_weekend", "is_fraud_prone_type",
+        "hour", "day", "is_weekend",
         "amount_log", "balance_drained", "drains_full_balance",
         "receiver_was_empty", "amount_to_balance_ratio",
     }
@@ -48,14 +48,6 @@ def test_drains_full_balance_flags_fraud_pattern() -> None:
     assert bool(result.loc[2, "drains_full_balance"])
     # Row 1: amount=50, oldbalanceOrg=500 → does not drain
     assert not bool(result.loc[1, "drains_full_balance"])
-
-
-def test_is_fraud_prone_type_only_true_for_transfer_and_cashout() -> None:
-    result = add_row_features(_sample_df())
-    assert bool(result.loc[0, "is_fraud_prone_type"])   # TRANSFER
-    assert not bool(result.loc[1, "is_fraud_prone_type"])  # PAYMENT
-    assert bool(result.loc[2, "is_fraud_prone_type"])   # CASH_OUT
-    assert not bool(result.loc[3, "is_fraud_prone_type"])  # CASH_IN
 
 
 def test_amount_log_is_log1p() -> None:

@@ -1,4 +1,4 @@
-.PHONY: help install lint format typecheck test test-cov clean train serve frontend dev
+.PHONY: help install lint format typecheck test test-cov clean train mlflow-ui serve frontend dev
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -29,8 +29,11 @@ clean:  ## Remove cache and build artifacts
 	find . -type d -name ".ruff_cache" -exec rm -rf {} +
 	rm -rf htmlcov .coverage
 
-train:  ## Train the fraud detection model (Phase 1)
-	@echo "Not yet implemented — Phase 1, Step 1.6"
+train:  ## Train the fraud detection model (use MODEL=lightgbm|xgboost|logreg, SAMPLE=1.0)
+	uv run python -m ml.training.train --model $(or $(MODEL),lightgbm) --sample-frac $(or $(SAMPLE),1.0)
+
+mlflow-ui:  ## Open MLflow UI at http://localhost:5000
+	uv run mlflow ui --backend-store-uri file:./mlruns
 
 serve:  ## Start FastAPI dev server (Phase 2)
 	@echo "Not yet implemented — Phase 2, Step 2.2"

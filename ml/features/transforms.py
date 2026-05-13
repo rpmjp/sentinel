@@ -9,9 +9,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-# Transaction types where fraud actually occurs in PaySim
-FRAUD_PRONE_TYPES = ["TRANSFER", "CASH_OUT"]
-
 
 def add_row_features(df: pd.DataFrame) -> pd.DataFrame:
     """Add per-row engineered features. Returns a new DataFrame.
@@ -32,8 +29,6 @@ def add_row_features(df: pd.DataFrame) -> pd.DataFrame:
     out["hour"] = out["step"] % 24
     out["day"] = out["step"] // 24
     out["is_weekend"] = (out["day"] % 7).isin([5, 6])
-
-    out["is_fraud_prone_type"] = out["type"].isin(FRAUD_PRONE_TYPES)
 
     out["amount_log"] = np.log1p(out["amount"])
 
