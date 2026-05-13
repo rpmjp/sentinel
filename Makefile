@@ -1,4 +1,4 @@
-.PHONY: help install lint format typecheck test test-cov clean train mlflow-ui frontend-install seed serve frontend dev
+.PHONY: help install lint format typecheck test test-cov clean train mlflow-ui frontend-install seed seed-txns serve frontend dev
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -37,6 +37,9 @@ mlflow-ui:  ## Open MLflow UI at http://localhost:5000
 
 seed:  ## Seed demo tenant, users, and model_version into Postgres
 	uv run python -m scripts.seed_demo
+
+seed-txns:  ## Seed 500 scored demo transactions into Postgres
+	uv run python -m scripts.seed_transactions
 
 serve:  ## Start FastAPI dev server on http://localhost:8000
 	uv run uvicorn api.main:app --reload --port 8000

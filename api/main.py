@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import get_settings
-from api.routers import auth, health, queue, scoring
+from api.routers import auth, dashboard, health, queue, scoring
 
 settings = get_settings()
 
@@ -62,6 +62,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(scoring.router)
 app.include_router(queue.router)
+app.include_router(dashboard.router)
 
 
 @app.get("/", include_in_schema=False)
