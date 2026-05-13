@@ -8,6 +8,7 @@ import Queue from "@/pages/Queue";
 import TransactionDetail from "@/pages/TransactionDetail";
 import Tuner from "@/pages/Tuner";
 import Drift from "@/pages/Drift";
+import Models from "@/pages/Models";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -24,7 +25,7 @@ export const router = createBrowserRouter([
       { path: "queue", element: <Queue /> },
       { path: "transactions/:id", element: <TransactionDetail /> },
       { path: "investigate", element: <Placeholder name="Investigations" step="Step 3.7" /> },
-      { path: "models", element: <Placeholder name="Model registry" step="Step 3.9" /> },
+      { path: "models", element: <Models /> },
       { path: "drift", element: <Drift /> },
       { path: "tuner", element: <Tuner /> },
       { path: "settings", element: <Placeholder name="Settings" step="Step 3.12" /> },
