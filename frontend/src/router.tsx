@@ -4,6 +4,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { Placeholder } from "@/pages/Placeholder";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
+import Queue from "@/pages/Queue";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -17,7 +18,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: <Dashboard /> },
-      { path: "queue", element: <Placeholder name="Fraud queue" step="Step 3.6" /> },
+      { path: "queue", element: <Queue /> },
       { path: "investigate", element: <Placeholder name="Investigations" step="Step 3.7" /> },
       { path: "models", element: <Placeholder name="Model registry" step="Step 3.9" /> },
       { path: "drift", element: <Placeholder name="Drift monitoring" step="Step 3.10" /> },
