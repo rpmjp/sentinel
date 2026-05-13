@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme {
+  /* Sentinel brand — Option A: Coral + Deep Navy */
+  --color-brand: #d85a30;
+  --color-brand-hover: #c14a25;
+  --color-brand-soft: rgba(216, 90, 48, 0.12);
+  --color-brand-fg: #ffffff;
+
+  /* Risk semantic colors */
+  --color-risk-high: #d85a30;
+  --color-risk-medium: #ef9f27;
+  --color-risk-low: #6b7a8f;
+
+  /* Status colors */
+  --color-success: #5dcaa5;
+  --color-warning: #ef9f27;
+  --color-danger: #d85a30;
+
+  /* Fonts */
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+}
+
+/* Dark theme (default) */
+:root {
+  color-scheme: dark;
+
+  --color-bg: #0b1426;
+  --color-surface: #070f1d;
+  --color-surface-elevated: rgba(255, 255, 255, 0.025);
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-strong: rgba(255, 255, 255, 0.12);
+
+  --color-fg: #f0f4fa;
+  --color-fg-muted: #b8c5d9;
+  --color-fg-subtle: #8fa0b8;
+  --color-fg-faint: #6b7a8f;
+}
+
+/* Light theme */
+:root.light {
+  color-scheme: light;
+
+  --color-bg: #fafaf7;
+  --color-surface: #f2f0e9;
+  --color-surface-elevated: #ffffff;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-strong: rgba(0, 0, 0, 0.16);
+
+  --color-fg: #0b1426;
+  --color-fg-muted: #2d3748;
+  --color-fg-subtle: #4a5568;
+  --color-fg-faint: #8a8779;
+
+  --color-brand: #993c1d;
+  --color-brand-hover: #7a3017;
+  --color-brand-soft: rgba(216, 90, 48, 0.1);
+  --color-success: #0f6e56;
+  --color-warning: #854f0b;
+}
+
+/* Base layer */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Inter + JetBrains Mono via Google Fonts */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");

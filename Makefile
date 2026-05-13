@@ -1,4 +1,4 @@
-.PHONY: help install lint format typecheck test test-cov clean train mlflow-ui seed serve frontend dev
+.PHONY: help install lint format typecheck test test-cov clean train mlflow-ui frontend-install seed serve frontend dev
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -41,8 +41,11 @@ seed:  ## Seed demo tenant, users, and model_version into Postgres
 serve:  ## Start FastAPI dev server on http://localhost:8000
 	uv run uvicorn api.main:app --reload --port 8000
 
-frontend:  ## Start frontend dev server (Phase 3)
-	@echo "Not yet implemented — Phase 3, Step 3.1"
+frontend:  ## Start frontend dev server on http://localhost:5173
+	cd frontend && pnpm dev
+
+frontend-install:  ## Install frontend dependencies
+	cd frontend && pnpm install
 
 dev:  ## Start all services locally (Phase 4)
 	@echo "Not yet implemented — Phase 4, Step 4.2"
