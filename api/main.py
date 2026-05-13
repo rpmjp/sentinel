@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import get_settings
-from api.routers import health
+from api.routers import health, scoring
 
 settings = get_settings()
 
@@ -29,8 +29,12 @@ log = logging.getLogger("sentinel.api")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Startup/shutdown hooks. Real work added in later steps."""
+    """Startup/shutdown hooks."""
+    from api.services.model_service import init_model_service
+
     log.info("Sentinel API starting (env=%s)", settings.env)
+    init_model_service(model_path=settings.model_path)
+    log.info("Model service initialized")
     yield
     log.info("Sentinel API stopping")
 
@@ -55,6 +59,7 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(scoring.router)
 
 
 @app.get("/", include_in_schema=False)
