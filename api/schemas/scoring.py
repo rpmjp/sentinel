@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from pydantic import BaseModel, Field
 
 
@@ -26,6 +28,8 @@ class TopFeatureOut(BaseModel):
 
 
 class ScoreOut(BaseModel):
+    transaction_id: uuid.UUID
+    prediction_id: uuid.UUID
     score: float = Field(description="Calibrated fraud probability [0, 1]")
     risk_band: str = Field(description="high | medium | low")
     threshold: float
