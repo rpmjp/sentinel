@@ -11,7 +11,11 @@ import { Card } from "@/components/ui/Card";
 import { RiskBadge, DecisionBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ShapWaterfall } from "@/components/ShapWaterfall";
-import { useSubmitFeedback, useTransaction } from "@/lib/hooks";
+import {
+  useSimilarTransactions,
+  useSubmitFeedback,
+  useTransaction,
+} from "@/lib/hooks";
 import {
   fmtCurrency,
   fmtCurrencyCompact,
@@ -24,6 +28,7 @@ export default function TransactionDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data, isLoading, error } = useTransaction(id);
+  const similar = useSimilarTransactions(id);
   const feedback = useSubmitFeedback(id);
   const [notes, setNotes] = useState("");
 
@@ -269,6 +274,64 @@ export default function TransactionDetail() {
           </dl>
         </Card>
       </div>
+
+      <Card padding="none">
+        <div
+          className="px-4 py-2.5 border-b text-[10px] uppercase tracking-wider"
+          style={{
+            color: "var(--color-fg-subtle)",
+            borderColor: "var(--color-border)",
+          }}
+        >
+          Similar transactions
+        </div>
+
+        {similar.isLoading ? (
+          <div
+            className="px-4 py-6 text-sm"
+            style={{ color: "var(--color-fg-subtle)" }}
+          >
+            Loading similar transactions…
+          </div>
+        ) : similar.data?.length === 0 ? (
+          <div
+            className="px-4 py-6 text-sm"
+            style={{ color: "var(--color-fg-subtle)" }}
+          >
+            No similar transactions found.
+          </div>
+        ) : (
+          similar.data?.map((item) => (
+            <Link
+              key={item.transaction_id}
+              to={`/transactions/${item.transaction_id}`}
+              className="grid grid-cols-[60px_70px_1fr_110px_110px] gap-3 px-4 py-3 border-t items-center text-sm hover:bg-[var(--color-surface-elevated)]"
+              style={{ borderColor: "var(--color-border)" }}
+            >
+              <RiskBadge risk={item.risk_band} />
+              <span className="font-mono font-medium">
+                {fmtScore(item.score)}
+              </span>
+              <span
+                className="font-mono text-xs truncate"
+                style={{ color: "var(--color-fg-muted)" }}
+              >
+                {item.name_orig} → {item.name_dest}
+                <span style={{ color: "var(--color-fg-faint)" }}>
+                  {" · "}
+                  {item.type}
+                </span>
+              </span>
+              <span className="font-mono text-right">
+                {fmtCurrencyCompact(item.amount)}
+              </span>
+              <span>
+                <DecisionBadge decision={item.decision as Decision | null} />
+              </span>
+            </Link>
+          ))
+        )}
+      </Card>
     </div>
   );
 }
