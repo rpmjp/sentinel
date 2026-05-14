@@ -12,6 +12,9 @@ import Investigate from "@/pages/Investigate";
 import Settings from "@/pages/Settings";
 import EntityProfile from "@/pages/EntityProfile";
 import Watchlists from "@/pages/Watchlists";
+import Upload from "@/pages/Upload";
+import Cases from "@/pages/Cases";
+import CaseDetail from "@/pages/CaseDetail";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -29,6 +32,9 @@ export const router = createBrowserRouter([
       { path: "transactions/:id", element: <TransactionDetail /> },
       { path: "entities/:accountId", element: <EntityProfile /> },
       { path: "investigate", element: <Investigate /> },
+      { path: "upload", element: <Upload /> },
+      { path: "cases", element: <Cases /> },
+      { path: "cases/:id", element: <CaseDetail /> },
       { path: "watchlists", element: <Watchlists /> },
       { path: "models", element: <Models /> },
       { path: "drift", element: <Drift /> },

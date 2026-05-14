@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import { Activity, AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
+import { ChartContainer } from "@/components/ui/ChartContainer";
 import { Metric } from "@/components/ui/Metric";
 import { fmtNumber } from "@/lib/format";
 
@@ -155,8 +156,7 @@ export default function Drift() {
           <Activity size={12} />
           <span>Visual check that the model's score histogram hasn't shifted.</span>
         </div>
-        <div style={{ width: "100%", height: 240 }}>
-          <ResponsiveContainer>
+        <ChartContainer height={240}>
             <BarChart data={data.score_distribution}>
               <XAxis dataKey="bucket" stroke="var(--color-fg-faint)" fontSize={10} />
               <YAxis stroke="var(--color-fg-faint)" fontSize={10} />
@@ -171,8 +171,7 @@ export default function Drift() {
               <Bar dataKey="baseline_count" fill="var(--color-fg-subtle)" name="baseline" />
               <Bar dataKey="recent_count" fill="var(--color-info)" name="recent" />
             </BarChart>
-          </ResponsiveContainer>
-        </div>
+        </ChartContainer>
       </Card>
 
       <Card padding="none">

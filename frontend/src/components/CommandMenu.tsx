@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Activity,
+  Briefcase,
   Cpu,
   Inbox,
   LayoutDashboard,
@@ -9,6 +10,7 @@ import {
   Search,
   Settings,
   Sliders,
+  Upload,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -27,6 +29,14 @@ interface CommandItem {
 const COMMANDS: CommandItem[] = [
   { label: "Dashboard", hint: "Command center", to: "/dashboard", icon: LayoutDashboard },
   { label: "Queue", hint: "Analyst worklist", to: "/queue", icon: Inbox },
+  { label: "Upload", hint: "Score a CSV batch", to: "/upload", icon: Upload },
+  { label: "Cases", hint: "Case management", to: "/cases", icon: Briefcase },
+  {
+    label: "Overdue cases",
+    hint: "SLA attention needed",
+    to: "/cases?overdue=true",
+    icon: Briefcase,
+  },
   { label: "Investigate", hint: "Search all transactions", to: "/investigate", icon: Search },
   {
     label: "High-risk pending",

@@ -62,11 +62,11 @@ export function LiveTicker() {
         </div>
       ) : (
         <div>
-          {data.items.slice(0, 8).map((item) => {
+          {data.items.slice(0, 8).map((item, index) => {
             const isNew = recentIds.has(item.transaction_id);
             return (
               <Link
-                key={item.transaction_id}
+                key={`${item.transaction_id}-${index}`}
                 to={`/transactions/${item.transaction_id}`}
                 className="flex items-center gap-2 px-3 py-2 border-t text-xs transition-colors hover:bg-[var(--color-surface-elevated)]"
                 style={{

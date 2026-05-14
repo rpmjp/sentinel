@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { RiskBadge, DecisionBadge } from "@/components/ui/Badge";
@@ -14,6 +14,7 @@ type RiskFilter = "all" | RiskBand;
 type DecidedFilter = "all" | "pending" | "decided";
 
 export default function Queue() {
+  const navigate = useNavigate();
   const [risk, setRisk] = useState<RiskFilter>("all");
   const [decided, setDecided] = useState<DecidedFilter>("all");
   const [page, setPage] = useState(1);
@@ -152,11 +153,23 @@ export default function Queue() {
             }
           />
         ) : (
-          data!.items.map((item) => (
-            <Link
-              key={item.transaction_id}
-              to={`/transactions/${item.transaction_id}`}
-              state={{ returnTo: "/queue", returnLabel: "queue" }}
+          data!.items.map((item, index) => (
+            <div
+              key={`${item.transaction_id}-${index}`}
+              role="link"
+              tabIndex={0}
+              onClick={() =>
+                navigate(`/transactions/${item.transaction_id}`, {
+                  state: { returnTo: "/queue", returnLabel: "queue" },
+                })
+              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  navigate(`/transactions/${item.transaction_id}`, {
+                    state: { returnTo: "/queue", returnLabel: "queue" },
+                  });
+                }
+              }}
               className="grid grid-cols-[60px_70px_1fr_110px_110px_100px] gap-3 px-4 py-3 border-t items-center text-sm transition-colors hover:bg-[var(--color-surface-elevated)]"
               style={{ borderColor: "var(--color-border)" }}
             >
@@ -195,10 +208,10 @@ export default function Queue() {
               <span
                 className="text-xs text-right"
                 style={{ color: "var(--color-fg-faint)" }}
-              >
-                {fmtRelativeTime(item.scored_at)}
-              </span>
-            </Link>
+                >
+                  {fmtRelativeTime(item.scored_at)}
+                </span>
+            </div>
           ))
         )}
       </Card>

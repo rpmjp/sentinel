@@ -432,6 +432,45 @@ export function useStopReplay() {
   });
 }
 
+export interface UploadTransactionsResult {
+  uploaded: number;
+  scored: number;
+  high: number;
+  medium: number;
+  low: number;
+  rejected: number;
+  errors: Array<{
+    row: number;
+    field: string;
+    message: string;
+  }>;
+  total_latency_ms: number;
+}
+
+export function useUploadTransactions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await api.post<UploadTransactionsResult>(
+        "/upload/transactions",
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } },
+      );
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["queue"] });
+      qc.invalidateQueries({ queryKey: ["investigate"] });
+      qc.invalidateQueries({ queryKey: ["kpis"] });
+      qc.invalidateQueries({ queryKey: ["timeseries"] });
+      qc.invalidateQueries({ queryKey: ["type-breakdown"] });
+      qc.invalidateQueries({ queryKey: ["heatmap"] });
+    },
+  });
+}
+
 export interface GeoBucket {
   code: string;
   name: string;
@@ -460,5 +499,201 @@ export function useGeoUs() {
       return data;
     },
     refetchInterval: 60_000,
+  });
+}
+
+export type CaseStatus = "open" | "investigating" | "waiting" | "escalated" | "closed";
+export type CasePriority = "low" | "medium" | "high" | "critical";
+
+export interface CaseStats {
+  open: number;
+  overdue: number;
+  critical: number;
+  unassigned: number;
+}
+
+export interface CaseSummary {
+  id: string;
+  title: string;
+  description: string | null;
+  status: CaseStatus;
+  priority: CasePriority;
+  assigned_to: string | null;
+  sla_due_at: string | null;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  outcome: string | null;
+  transaction_count: number;
+  entity_count: number;
+  note_count: number;
+}
+
+export interface CaseEntity {
+  account_id: string;
+  role: string;
+  added_at: string;
+}
+
+export interface CaseNote {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+}
+
+export interface CaseDetail extends CaseSummary {
+  transactions: InvestigateItem[];
+  entities: CaseEntity[];
+  notes: CaseNote[];
+}
+
+export interface CreateCasePayload {
+  title: string;
+  description?: string;
+  priority: CasePriority;
+  status?: CaseStatus;
+  assigned_to?: string | null;
+  sla_due_at?: string | null;
+  transaction_ids?: string[];
+  entity_ids?: string[];
+}
+
+export interface UpdateCasePayload {
+  title?: string;
+  description?: string | null;
+  status?: CaseStatus;
+  priority?: CasePriority;
+  assigned_to?: string | null;
+  sla_due_at?: string | null;
+  outcome?: string | null;
+}
+
+export function useCases(params: {
+  status?: string;
+  priority?: string;
+  assigned_to?: string;
+  overdue?: boolean;
+} = {}) {
+  return useQuery({
+    queryKey: ["cases", params],
+    queryFn: async () => {
+      const { data } = await api.get<{ items: CaseSummary[]; stats: CaseStats }>(
+        "/cases",
+        { params },
+      );
+      return data;
+    },
+  });
+}
+
+export function useCase(caseId: string | undefined) {
+  return useQuery({
+    queryKey: ["case", caseId],
+    queryFn: async () => {
+      const { data } = await api.get<CaseDetail>(`/cases/${caseId}`);
+      return data;
+    },
+    enabled: !!caseId,
+  });
+}
+
+export function useCreateCase() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: CreateCasePayload) => {
+      const { data } = await api.post<CaseDetail>("/cases", payload);
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["cases"] });
+      qc.invalidateQueries({ queryKey: ["case", data.id] });
+    },
+  });
+}
+
+export function useUpdateCase(caseId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: UpdateCasePayload) => {
+      const { data } = await api.patch<CaseDetail>(`/cases/${caseId}`, payload);
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["cases"] });
+      qc.invalidateQueries({ queryKey: ["case", data.id] });
+    },
+  });
+}
+
+export function useAddCaseNote(caseId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (content: string) => {
+      const { data } = await api.post(`/cases/${caseId}/notes`, { content });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cases"] });
+      qc.invalidateQueries({ queryKey: ["case", caseId] });
+    },
+  });
+}
+
+export function useLinkCaseTransactions(caseId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (transactionIds: string[]) => {
+      const { data } = await api.post<CaseDetail>(`/cases/${caseId}/transactions`, {
+        transaction_ids: transactionIds,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cases"] });
+      qc.invalidateQueries({ queryKey: ["case", caseId] });
+    },
+  });
+}
+
+export function useUnlinkCaseTransaction(caseId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (transactionId: string) => {
+      await api.delete(`/cases/${caseId}/transactions/${transactionId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cases"] });
+      qc.invalidateQueries({ queryKey: ["case", caseId] });
+    },
+  });
+}
+
+export function useLinkCaseEntities(caseId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (entityIds: string[]) => {
+      const { data } = await api.post<CaseDetail>(`/cases/${caseId}/entities`, {
+        entity_ids: entityIds,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cases"] });
+      qc.invalidateQueries({ queryKey: ["case", caseId] });
+    },
+  });
+}
+
+export function useUnlinkCaseEntity(caseId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (accountId: string) => {
+      await api.delete(`/cases/${caseId}/entities/${encodeURIComponent(accountId)}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cases"] });
+      qc.invalidateQueries({ queryKey: ["case", caseId] });
+    },
   });
 }

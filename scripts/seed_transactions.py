@@ -1,6 +1,6 @@
 """Seed a realistic set of scored transactions for demoing the dashboard.
 
-Pulls 500 rows from PaySim (mostly legit + some fraud), scores each through
+Pulls 25,000 rows from PaySim (mostly legit + some fraud), scores each through
 the same model service the API uses, and persists Transaction + Prediction
 rows for the demo tenant.
 
@@ -28,7 +28,7 @@ log = logging.getLogger(__name__)
 
 DATA_PATH = Path("data/raw/paysim.csv")
 DEMO_TENANT_SLUG = "demo-bank-01"
-SAMPLE_SIZE = 500
+SAMPLE_SIZE = 25000
 FRAUD_FRACTION = 0.25  # punch up the fraud rate so the dashboard isn't boring
 
 

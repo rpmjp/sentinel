@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search, ChevronLeft, ChevronRight, X, SlidersHorizontal,
-  Download, CheckSquare, Square, AlertCircle,
+  Download, CheckSquare, Square, AlertCircle, Briefcase,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { RiskBadge, DecisionBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Metric } from "@/components/ui/Metric";
 import { EmptyState, SkeletonRows } from "@/components/ui/States";
+import { CreateCaseDialog } from "@/components/CreateCaseDialog";
 import {
   useInvestigate, useBulkAction,
   type InvestigateParams, type InvestigateResponse,
@@ -37,6 +38,7 @@ const PRESETS: Preset[] = [
 
 export default function Investigate() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [params, setParams] = useState<InvestigateParams>(() =>
     paramsFromSearch(searchParams),
@@ -44,6 +46,7 @@ export default function Investigate() {
   const [draftQ, setDraftQ] = useState(params.q ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkNotes, setBulkNotes] = useState("");
+  const [caseDialogOpen, setCaseDialogOpen] = useState(false);
 
   const { data, isLoading } = useInvestigate(params);
   const bulk = useBulkAction();
@@ -298,6 +301,9 @@ export default function Investigate() {
             <Button variant="ghost" size="sm" loading={bulk.isPending} onClick={() => handleBulk("escalated")}>
               escalate
             </Button>
+            <Button variant="secondary" size="sm" onClick={() => setCaseDialogOpen(true)}>
+              <Briefcase size={12} /> create case
+            </Button>
             <button onClick={() => setSelected(new Set())} style={{ color: "var(--color-fg-faint)" }}>
               <X size={14} />
             </button>
@@ -312,7 +318,11 @@ export default function Investigate() {
         selected={selected}
         onToggle={toggleSelect}
         onToggleAll={toggleSelectAll}
-        returnTo={returnTo}
+        onOpenTransaction={(transactionId) =>
+          navigate(`/transactions/${transactionId}`, {
+            state: { returnTo, returnLabel: "investigation results" },
+          })
+        }
       />
 
       {/* Pagination */}
@@ -341,6 +351,13 @@ export default function Investigate() {
           </div>
         </div>
       )}
+      <CreateCaseDialog
+        open={caseDialogOpen}
+        onOpenChange={setCaseDialogOpen}
+        initialTitle={`Investigation batch (${selected.size})`}
+        initialDescription="Created from selected investigation rows."
+        initialTransactionIds={Array.from(selected)}
+      />
     </div>
   );
 }
@@ -382,14 +399,14 @@ function searchFromParams(params: InvestigateParams) {
 }
 
 function Results({
-  data, isLoading, selected, onToggle, onToggleAll, returnTo,
+  data, isLoading, selected, onToggle, onToggleAll, onOpenTransaction,
 }: {
   data: InvestigateResponse | undefined;
   isLoading: boolean;
   selected: Set<string>;
   onToggle: (id: string) => void;
   onToggleAll: () => void;
-  returnTo: string;
+  onOpenTransaction: (transactionId: string) => void;
 }) {
   const allSelected = !!data && data.items.length > 0 && selected.size === data.items.length;
   return (
@@ -420,11 +437,17 @@ function Results({
           description="Clear filters or try one of the investigation presets."
         />
       ) : (
-        data!.items.map((item) => {
+        data!.items.map((item, index) => {
           const isSel = selected.has(item.transaction_id);
           return (
             <div
-              key={item.transaction_id}
+              key={`${item.transaction_id}-${index}`}
+              role="link"
+              tabIndex={0}
+              onClick={() => onOpenTransaction(item.transaction_id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") onOpenTransaction(item.transaction_id);
+              }}
               className="grid grid-cols-[32px_60px_70px_1fr_110px_110px_100px] gap-3 px-4 py-3 border-t items-center text-sm transition-colors hover:bg-[var(--color-surface-elevated)]"
               style={{ borderColor: "var(--color-border)" }}
             >
@@ -435,37 +458,31 @@ function Results({
               >
                 {isSel ? <CheckSquare size={14} /> : <Square size={14} />}
               </button>
-              <Link
-                to={`/transactions/${item.transaction_id}`}
-                state={{ returnTo, returnLabel: "investigation results" }}
-                className="contents"
-              >
-                <RiskBadge risk={item.risk_band} />
-                <span className="font-mono font-medium">{fmtScore(item.score)}</span>
-                <span className="font-mono text-xs truncate" style={{ color: "var(--color-fg-muted)" }}>
-                  <Link
-                    to={`/entities/${encodeURIComponent(item.name_orig)}`}
-                    onClick={(event) => event.stopPropagation()}
-                    style={{ color: "var(--color-brand)" }}
-                  >
-                    {item.name_orig}
-                  </Link>
-                  {" → "}
-                  <Link
-                    to={`/entities/${encodeURIComponent(item.name_dest)}`}
-                    onClick={(event) => event.stopPropagation()}
-                    style={{ color: "var(--color-brand)" }}
-                  >
-                    {item.name_dest}
-                  </Link>
-                  <span style={{ color: "var(--color-fg-faint)" }}>{" · "}{item.type}</span>
-                </span>
-                <span className="font-mono text-right">{fmtCurrencyCompact(item.amount)}</span>
-                <span><DecisionBadge decision={item.decision as Decision | null} /></span>
-                <span className="text-xs text-right" style={{ color: "var(--color-fg-faint)" }}>
-                  {fmtRelativeTime(item.scored_at)}
-                </span>
-              </Link>
+              <RiskBadge risk={item.risk_band} />
+              <span className="font-mono font-medium">{fmtScore(item.score)}</span>
+              <span className="font-mono text-xs truncate" style={{ color: "var(--color-fg-muted)" }}>
+                <Link
+                  to={`/entities/${encodeURIComponent(item.name_orig)}`}
+                  onClick={(event) => event.stopPropagation()}
+                  style={{ color: "var(--color-brand)" }}
+                >
+                  {item.name_orig}
+                </Link>
+                {" → "}
+                <Link
+                  to={`/entities/${encodeURIComponent(item.name_dest)}`}
+                  onClick={(event) => event.stopPropagation()}
+                  style={{ color: "var(--color-brand)" }}
+                >
+                  {item.name_dest}
+                </Link>
+                <span style={{ color: "var(--color-fg-faint)" }}>{" · "}{item.type}</span>
+              </span>
+              <span className="font-mono text-right">{fmtCurrencyCompact(item.amount)}</span>
+              <span><DecisionBadge decision={item.decision as Decision | null} /></span>
+              <span className="text-xs text-right" style={{ color: "var(--color-fg-faint)" }}>
+                {fmtRelativeTime(item.scored_at)}
+              </span>
             </div>
           );
         })

@@ -2,7 +2,9 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   Inbox,
+  Upload,
   Search,
+  Briefcase,
   ListChecks,
   Cpu,
   Activity,
@@ -24,6 +26,8 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/queue", label: "Queue", icon: Inbox, badge: true },
+  { to: "/upload", label: "Upload", icon: Upload },
+  { to: "/cases", label: "Cases", icon: Briefcase },
   { to: "/investigate", label: "Investigate", icon: Search },
   { to: "/watchlists", label: "Watchlists", icon: ListChecks },
   { to: "/models", label: "Models", icon: Cpu },

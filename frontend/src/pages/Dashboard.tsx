@@ -3,17 +3,18 @@ import { Link } from "react-router-dom";
 import { ArrowRight, AlertCircle, Clock, ShieldAlert } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, Line, XAxis, YAxis,
-  ResponsiveContainer, Tooltip, CartesianGrid,
+  Tooltip, CartesianGrid,
 } from "recharts";
 import { Card } from "@/components/ui/Card";
 import { BigNumber } from "@/components/ui/BigNumber";
+import { ChartContainer } from "@/components/ui/ChartContainer";
 import { RiskBadge } from "@/components/ui/Badge";
 import { Heatmap } from "@/components/Heatmap";
 import { LiveTicker } from "@/components/LiveTicker";
 import { ReplayControl } from "@/components/ReplayControl";
 import { GeoMap } from "@/components/GeoMap";
 import {
-  useKpis, useQueue, useTimeseries, useHeatmap, useTypeBreakdown, useSparkline,
+  useCases, useKpis, useQueue, useTimeseries, useHeatmap, useTypeBreakdown, useSparkline,
 } from "@/lib/hooks";
 import {
   fmtCurrencyCompact, fmtNumber, fmtPct, fmtRelativeTime, fmtScore,
@@ -42,6 +43,7 @@ export default function Dashboard() {
   const sparkline = useSparkline(rangeConfig.hours);
   const recent = useQueue({ risk: "high", page_size: 5 });
   const pendingHighRisk = useQueue({ risk: "high", page_size: 1 });
+  const cases = useCases();
   useEffect(() => {
     if (
       range === "24h" &&
@@ -246,6 +248,59 @@ export default function Dashboard() {
       <div className="grid grid-cols-12 gap-4">
         {/* Main column */}
         <div className="col-span-12 lg:col-span-8 space-y-4">
+          {/* Geographic distribution */}
+          <GeoMap />
+
+          {/* Type breakdown */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div
+                  className="text-[10px] uppercase tracking-wider mb-1"
+                  style={{ color: "var(--color-fg-subtle)" }}
+                >
+                  Risk by transaction type
+                </div>
+                <div className="text-xs" style={{ color: "var(--color-fg-faint)" }}>
+                  Stacked counts across the full history
+                </div>
+              </div>
+              <div className="flex gap-3 text-[10px] font-mono" style={{ color: "var(--color-fg-subtle)" }}>
+                <span><span style={{ color: "var(--color-risk-high)" }}>● </span>high</span>
+                <span><span style={{ color: "var(--color-risk-medium)" }}>● </span>med</span>
+                <span><span style={{ color: "var(--color-risk-low)" }}>● </span>low</span>
+              </div>
+            </div>
+            <ChartContainer height={200}>
+                <BarChart data={types.data ?? []}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis dataKey="type" stroke="var(--color-fg-faint)" fontSize={10} />
+                  <YAxis stroke="var(--color-fg-faint)" fontSize={10} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--color-surface)",
+                      border: "1px solid var(--color-border)",
+                      fontSize: 11,
+                    }}
+                  />
+                  <Bar dataKey="high" stackId="r" fill="var(--color-risk-high)" />
+                  <Bar dataKey="medium" stackId="r" fill="var(--color-risk-medium)" />
+                  <Bar dataKey="low" stackId="r" fill="var(--color-risk-low)" />
+                </BarChart>
+            </ChartContainer>
+            <div className="flex gap-3 mt-2 text-xs flex-wrap">
+              {(types.data ?? []).slice(0, 5).map((item) => (
+                <Link
+                  key={item.type}
+                  to={investigatePath({ txn_type: item.type })}
+                  style={{ color: "var(--color-brand)" }}
+                >
+                  {item.type}
+                </Link>
+              ))}
+            </div>
+          </Card>
+
           {/* Time-series area chart */}
           <Card>
             <div className="flex items-center justify-between mb-3">
@@ -265,8 +320,7 @@ export default function Dashboard() {
                 <span><span style={{ color: "var(--color-brand)" }}>● </span>flagged</span>
               </div>
             </div>
-            <div style={{ width: "100%", height: 200 }}>
-              <ResponsiveContainer>
+            <ChartContainer height={200}>
                 <AreaChart data={fraudRateSeries}>
                   <defs>
                     <linearGradient id="gAll" x1="0" y1="0" x2="0" y2="1">
@@ -321,8 +375,7 @@ export default function Dashboard() {
                     name="Fraud rate"
                   />
                 </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            </ChartContainer>
             <div className="mt-2 text-xs" style={{ color: "var(--color-fg-faint)" }}>
               Peak flagged bucket: {peakBucket.timestamp} · {peakBucket.fraud_count} flagged · {fmtCurrencyCompact(peakBucket.blocked_amount)} blocked
               <Link
@@ -375,133 +428,12 @@ export default function Dashboard() {
             {heatmap.data && <Heatmap data={heatmap.data} mode={heatmapMode} />}
           </Card>
 
-          {/* Type breakdown */}
-          <Card>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <div
-                  className="text-[10px] uppercase tracking-wider mb-1"
-                  style={{ color: "var(--color-fg-subtle)" }}
-                >
-                  Risk by transaction type
-                </div>
-                <div className="text-xs" style={{ color: "var(--color-fg-faint)" }}>
-                  Stacked counts across the full history
-                </div>
-              </div>
-              <div className="flex gap-3 text-[10px] font-mono" style={{ color: "var(--color-fg-subtle)" }}>
-                <span><span style={{ color: "var(--color-risk-high)" }}>● </span>high</span>
-                <span><span style={{ color: "var(--color-risk-medium)" }}>● </span>med</span>
-                <span><span style={{ color: "var(--color-risk-low)" }}>● </span>low</span>
-              </div>
-            </div>
-            <div style={{ width: "100%", height: 200 }}>
-              <ResponsiveContainer>
-                <BarChart data={types.data ?? []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                  <XAxis dataKey="type" stroke="var(--color-fg-faint)" fontSize={10} />
-                  <YAxis stroke="var(--color-fg-faint)" fontSize={10} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "var(--color-surface)",
-                      border: "1px solid var(--color-border)",
-                      fontSize: 11,
-                    }}
-                  />
-                  <Bar dataKey="high" stackId="r" fill="var(--color-risk-high)" />
-                  <Bar dataKey="medium" stackId="r" fill="var(--color-risk-medium)" />
-                  <Bar dataKey="low" stackId="r" fill="var(--color-risk-low)" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex gap-3 mt-2 text-xs flex-wrap">
-              {(types.data ?? []).slice(0, 5).map((item) => (
-                <Link
-                  key={item.type}
-                  to={investigatePath({ txn_type: item.type })}
-                  style={{ color: "var(--color-brand)" }}
-                >
-                  {item.type}
-                </Link>
-              ))}
-            </div>
-          </Card>
-
-          {/* Geographic distribution */}
-          <GeoMap />
-
-          {/* Recent high-risk */}
-          <Card padding="none">
-            <div
-              className="px-4 py-3 border-b flex items-center justify-between"
-              style={{ borderColor: "var(--color-border)" }}
-            >
-              <div>
-                <div className="text-sm font-medium">Recent high-risk transactions</div>
-                <div
-                  className="text-xs mt-0.5"
-                  style={{ color: "var(--color-fg-faint)" }}
-                >
-                  top 5, score desc
-                </div>
-              </div>
-              <Link
-                to={investigatePath({ risk: "high" })}
-                className="text-xs flex items-center gap-1"
-                style={{ color: "var(--color-brand)" }}
-              >
-                investigate <ArrowRight size={12} />
-              </Link>
-            </div>
-
-            {recent.isLoading ? (
-              <div className="p-6 text-sm" style={{ color: "var(--color-fg-subtle)" }}>
-                Loading…
-              </div>
-            ) : (recent.data?.items.length ?? 0) === 0 ? (
-              <div className="p-6 text-sm" style={{ color: "var(--color-fg-subtle)" }}>
-                No high-risk transactions yet.
-              </div>
-            ) : (
-              <div>
-                {recent.data!.items.map((item) => (
-                  <Link
-                    key={item.transaction_id}
-                    to={`/transactions/${item.transaction_id}`}
-                    className="grid grid-cols-[50px_70px_1fr_100px_80px] gap-3 px-4 py-3 border-t items-center text-sm hover:bg-[var(--color-surface-elevated)] transition-colors"
-                    style={{ borderColor: "var(--color-border)" }}
-                  >
-                    <RiskBadge risk={item.risk_band} />
-                    <span className="font-mono font-medium">{fmtScore(item.score)}</span>
-                    <span
-                      className="font-mono text-xs truncate"
-                      style={{ color: "var(--color-fg-muted)" }}
-                    >
-                      {item.name_orig} → {item.name_dest}
-                      <span style={{ color: "var(--color-fg-faint)" }}>
-                        {" · "}
-                        {item.type}
-                      </span>
-                    </span>
-                    <span className="font-mono text-right">
-                      {fmtCurrencyCompact(item.amount)}
-                    </span>
-                    <span
-                      className="text-xs text-right"
-                      style={{ color: "var(--color-fg-faint)" }}
-                    >
-                      {fmtRelativeTime(item.scored_at)}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </Card>
         </div>
 
         {/* Right sidebar */}
         <div className="col-span-12 lg:col-span-4 space-y-4">
           <ReplayControl />
+          <CasesWidget stats={cases.data?.stats} />
           <Card padding="md">
             <div className="flex items-center gap-2 mb-3">
               <Clock size={14} style={{ color: "var(--color-fg-subtle)" }} />
@@ -538,6 +470,7 @@ export default function Dashboard() {
             </Link>
           </Card>
           <LiveTicker />
+          <RecentHighRiskCard recent={recent} />
         </div>
       </div>
     </div>
@@ -585,6 +518,129 @@ function RangeSelector({
         </button>
       ))}
     </div>
+  );
+}
+
+function RecentHighRiskCard({
+  recent,
+}: {
+  recent: ReturnType<typeof useQueue>;
+}) {
+  return (
+    <Card padding="none">
+      <div
+        className="px-3 py-2 border-b flex items-center justify-between"
+        style={{ borderColor: "var(--color-border)" }}
+      >
+        <div>
+          <div className="text-sm font-medium">Recent high-risk</div>
+          <div
+            className="text-[10px] mt-0.5"
+            style={{ color: "var(--color-fg-faint)" }}
+          >
+            top 5, score desc
+          </div>
+        </div>
+        <Link
+          to={investigatePath({ risk: "high" })}
+          className="text-[10px] flex items-center gap-1"
+          style={{ color: "var(--color-brand)" }}
+        >
+          investigate <ArrowRight size={12} />
+        </Link>
+      </div>
+
+      {recent.isLoading ? (
+        <div className="p-4 text-xs" style={{ color: "var(--color-fg-subtle)" }}>
+          Loading…
+        </div>
+      ) : (recent.data?.items.length ?? 0) === 0 ? (
+        <div className="p-4 text-xs" style={{ color: "var(--color-fg-subtle)" }}>
+          No high-risk transactions yet.
+        </div>
+      ) : (
+        <div>
+          {recent.data!.items.map((item, index) => (
+            <Link
+              key={`${item.transaction_id}-${index}`}
+              to={`/transactions/${item.transaction_id}`}
+              className="grid grid-cols-[42px_54px_1fr_72px] gap-2 px-3 py-2 border-t items-center text-xs hover:bg-[var(--color-surface-elevated)] transition-colors"
+              style={{ borderColor: "var(--color-border)" }}
+            >
+              <RiskBadge risk={item.risk_band} />
+              <span className="font-mono font-medium">{fmtScore(item.score)}</span>
+              <span
+                className="font-mono truncate"
+                style={{ color: "var(--color-fg-muted)" }}
+              >
+                {item.type}
+              </span>
+              <span className="font-mono text-right">
+                {fmtCurrencyCompact(item.amount)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function CasesWidget({
+  stats,
+}: {
+  stats: { open: number; overdue: number; critical: number; unassigned: number } | undefined;
+}) {
+  return (
+    <Card padding="md">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <AlertCircle size={14} style={{ color: "var(--color-fg-subtle)" }} />
+          <span
+            className="text-[10px] uppercase tracking-wider"
+            style={{ color: "var(--color-fg-subtle)" }}
+          >
+            Case load
+          </span>
+        </div>
+        <Link to="/cases" className="text-xs" style={{ color: "var(--color-brand)" }}>
+          view all
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <CaseMiniStat label="open" value={stats?.open ?? 0} color="var(--color-brand)" to="/cases" />
+        <CaseMiniStat label="overdue" value={stats?.overdue ?? 0} color="var(--color-danger)" to="/cases?overdue=true" />
+        <CaseMiniStat label="critical" value={stats?.critical ?? 0} color="var(--color-warning)" to="/cases?priority=critical" />
+        <CaseMiniStat label="unassigned" value={stats?.unassigned ?? 0} color="var(--color-info)" to="/cases?assigned_to=unassigned" />
+      </div>
+    </Card>
+  );
+}
+
+function CaseMiniStat({
+  label,
+  value,
+  color,
+  to,
+}: {
+  label: string;
+  value: number;
+  color: string;
+  to: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className="rounded-md border px-3 py-2"
+      style={{ borderColor: "var(--color-border)", background: "var(--color-surface-elevated)" }}
+    >
+      <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-fg-faint)" }}>
+        {label}
+      </div>
+      <div className="font-mono text-lg mt-1" style={{ color }}>
+        {fmtNumber(value)}
+      </div>
+    </Link>
   );
 }
 

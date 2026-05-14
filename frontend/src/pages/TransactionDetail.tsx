@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Ban,
+  Briefcase,
   CheckCircle2,
   XCircle,
   AlertTriangle,
@@ -13,6 +14,7 @@ import { RiskBadge, DecisionBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, SkeletonRows } from "@/components/ui/States";
 import { ShapWaterfall } from "@/components/ShapWaterfall";
+import { CreateCaseDialog } from "@/components/CreateCaseDialog";
 import {
   useSimilarTransactions,
   useAddWatchlistEntry,
@@ -37,6 +39,7 @@ export default function TransactionDetail() {
   const feedback = useSubmitFeedback(id);
   const addWatchlist = useAddWatchlistEntry();
   const [notes, setNotes] = useState("");
+  const [caseDialogOpen, setCaseDialogOpen] = useState(false);
   const returnState = location.state as
     | { returnTo?: string; returnLabel?: string }
     | null;
@@ -167,6 +170,13 @@ export default function TransactionDetail() {
           onClick={blockSender}
         >
           <Ban size={12} /> block sender
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setCaseDialogOpen(true)}
+        >
+          <Briefcase size={12} /> create case
         </Button>
       </div>
 
@@ -387,9 +397,9 @@ export default function TransactionDetail() {
             description="This transaction has no nearby matches by type, amount, and risk band."
           />
         ) : (
-          similar.data?.map((item) => (
+          similar.data?.map((item, index) => (
             <Link
-              key={item.transaction_id}
+              key={`${item.transaction_id}-${index}`}
               to={`/transactions/${item.transaction_id}`}
               state={{ returnTo, returnLabel }}
               className="grid grid-cols-[60px_70px_1fr_110px_110px] gap-3 px-4 py-3 border-t items-center text-sm hover:bg-[var(--color-surface-elevated)]"
@@ -419,6 +429,15 @@ export default function TransactionDetail() {
           ))
         )}
       </Card>
+
+      <CreateCaseDialog
+        open={caseDialogOpen}
+        onOpenChange={setCaseDialogOpen}
+        initialTitle={`Review ${data.name_orig} transfer`}
+        initialDescription={`Created from high-risk transaction ${data.transaction_id}.`}
+        initialTransactionIds={[data.transaction_id]}
+        initialEntityIds={[data.name_orig, data.name_dest]}
+      />
     </div>
   );
 }

@@ -6,13 +6,13 @@ import {
   Line,
   XAxis,
   YAxis,
-  ResponsiveContainer,
   Tooltip,
   ReferenceLine,
 } from "recharts";
 import { ArrowRight, Sliders } from "lucide-react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
+import { ChartContainer } from "@/components/ui/ChartContainer";
 import { Metric } from "@/components/ui/Metric";
 import { fmtCurrency, fmtPct } from "@/lib/format";
 
@@ -183,8 +183,7 @@ export default function Tuner() {
         >
           Net savings vs threshold
         </div>
-        <div style={{ width: "100%", height: 240 }}>
-          <ResponsiveContainer>
+        <ChartContainer height={240}>
             <ComposedChart data={data.cost_curve}>
               <XAxis
                 dataKey="threshold"
@@ -231,8 +230,7 @@ export default function Tuner() {
                 strokeWidth={1}
               />
             </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+        </ChartContainer>
       </Card>
 
       <Card>
@@ -242,8 +240,7 @@ export default function Tuner() {
         >
           Precision · recall vs threshold
         </div>
-        <div style={{ width: "100%", height: 240 }}>
-          <ResponsiveContainer>
+        <ChartContainer height={240}>
             <ComposedChart data={data.cost_curve}>
               <XAxis
                 dataKey="threshold"
@@ -291,8 +288,7 @@ export default function Tuner() {
                 strokeWidth={1}
               />
             </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+        </ChartContainer>
         <div className="flex gap-4 text-xs font-mono mt-2" style={{ color: "var(--color-fg-subtle)" }}>
           <span><span style={{ color: "var(--color-success)" }}>●</span> precision</span>
           <span><span style={{ color: "var(--color-accent)" }}>●</span> recall</span>

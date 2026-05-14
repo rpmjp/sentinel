@@ -1,19 +1,21 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   Area,
   AreaChart,
   CartesianGrid,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowRight, Ban, ShieldCheck, Unlock } from "lucide-react";
+import { ArrowRight, Ban, Briefcase, ShieldCheck, Unlock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { ChartContainer } from "@/components/ui/ChartContainer";
 import { Metric } from "@/components/ui/Metric";
 import { EmptyState, SkeletonRows } from "@/components/ui/States";
 import { RiskBadge, DecisionBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { CreateCaseDialog } from "@/components/CreateCaseDialog";
 import {
   useAddWatchlistEntry,
   useEntityProfile,
@@ -34,6 +36,7 @@ export default function EntityProfile() {
   const { data, isLoading, error } = useEntityProfile(accountId);
   const addWatchlist = useAddWatchlistEntry();
   const removeWatchlist = useRemoveWatchlistAccount();
+  const [caseDialogOpen, setCaseDialogOpen] = useState(false);
 
   async function addToWatchlist(listType: "blocked" | "trusted") {
     if (!accountId) return;
@@ -147,6 +150,13 @@ export default function EntityProfile() {
             >
               <ShieldCheck size={12} /> trust
             </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setCaseDialogOpen(true)}
+            >
+              <Briefcase size={12} /> create case
+            </Button>
           </div>
         </div>
       </Card>
@@ -177,8 +187,7 @@ export default function EntityProfile() {
           >
             Risk trend
           </div>
-          <div style={{ width: "100%", height: 260 }}>
-            <ResponsiveContainer>
+          <ChartContainer height={260}>
               <AreaChart data={data.trend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey="bucket" stroke="var(--color-fg-faint)" fontSize={10} />
@@ -198,8 +207,7 @@ export default function EntityProfile() {
                   name="Avg score"
                 />
               </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          </ChartContainer>
         </Card>
       </div>
 
@@ -222,9 +230,9 @@ export default function EntityProfile() {
             investigate <ArrowRight size={12} />
           </Link>
         </div>
-        {data.transactions.map((item) => (
+        {data.transactions.map((item, index) => (
           <Link
-            key={item.transaction_id}
+            key={`${item.transaction_id}-${index}`}
             to={`/transactions/${item.transaction_id}`}
             state={{
               returnTo: `/entities/${encodeURIComponent(summary.account_id)}`,
@@ -246,6 +254,13 @@ export default function EntityProfile() {
           </Link>
         ))}
       </Card>
+      <CreateCaseDialog
+        open={caseDialogOpen}
+        onOpenChange={setCaseDialogOpen}
+        initialTitle={`Entity review ${summary.account_id}`}
+        initialDescription={`Created from entity profile for ${summary.account_id}.`}
+        initialEntityIds={[summary.account_id]}
+      />
     </div>
   );
 }

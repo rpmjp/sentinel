@@ -7,6 +7,8 @@ import { TopBar } from "./TopBar";
 const TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/queue": "Fraud queue",
+  "/upload": "Batch upload",
+  "/cases": "Case management",
   "/investigate": "Investigations",
   "/entities": "Entity profile",
   "/watchlists": "Watchlists",
