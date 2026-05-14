@@ -31,11 +31,12 @@ export function Metric({
       className={cn("rounded-md border p-3", className)}
       style={{
         background: highlighted
-          ? "rgba(239,159,39,0.05)"
+          ? "var(--color-warning-soft)"
           : "var(--color-surface-elevated)",
         borderColor: highlighted
-          ? "rgba(239,159,39,0.3)"
+          ? "var(--color-warning)"
           : "var(--color-border)",
+        boxShadow: "var(--shadow-card)",
       }}
     >
       <div

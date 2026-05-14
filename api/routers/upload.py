@@ -20,7 +20,17 @@ from api.services.model_service import ModelService, get_model_service
 router = APIRouter(prefix="/upload", tags=["upload"])
 
 MAX_ROWS = 10_000
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+MAX_READ_BYTES = MAX_UPLOAD_BYTES + 1
+ALLOWED_CONTENT_TYPES = {
+    "text/csv",
+    "application/csv",
+    "application/vnd.ms-excel",
+    "text/plain",
+}
 CHUNK_SIZE = 100
+FORMULA_PREFIXES = ("=", "+", "-", "@")
+TEXT_COLUMNS = {"type", "nameOrig", "nameDest"}
 
 REQUIRED_COLUMNS = [
     "step",
@@ -49,7 +59,26 @@ def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
     for src, dest in COLUMN_ALIASES.items():
         if dest not in normalized and src in normalized:
             normalized[dest] = normalized[src]
+    for column in TEXT_COLUMNS:
+        value = normalized.get(column)
+        if isinstance(value, str):
+            cleaned = value.replace("\x00", "")
+            stripped = cleaned.lstrip()
+            if stripped.startswith(FORMULA_PREFIXES):
+                normalized[column] = f"'{stripped}"
+            else:
+                normalized[column] = cleaned
     return normalized
+
+
+async def _read_limited(file: UploadFile) -> bytes:
+    data = await file.read(MAX_READ_BYTES)
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"CSV exceeds {MAX_UPLOAD_BYTES // (1024 * 1024)} MB upload limit",
+        )
+    return data
 
 
 def _parse_csv(contents: bytes) -> tuple[list[TransactionIn], list[dict[str, Any]]]:
@@ -101,10 +130,16 @@ async def upload_transactions(
     db: Session = Depends(get_db),
     ctx: AuthContext = Depends(get_current_user),
 ) -> dict[str, Any]:
-    if not file.filename.lower().endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Upload must be a CSV file")
+    if ctx.role not in {"senior_analyst", "admin"}:
+        raise HTTPException(status_code=403, detail="senior analyst or admin role required")
 
-    contents = await file.read()
+    filename = file.filename or ""
+    if not filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Upload must be a CSV file")
+    if file.content_type and file.content_type.lower() not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status_code=400, detail="Upload content type must be CSV")
+
+    contents = await _read_limited(file)
     transactions, errors = _parse_csv(contents)
     if errors:
         raise HTTPException(

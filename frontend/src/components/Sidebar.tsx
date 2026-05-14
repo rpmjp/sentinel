@@ -23,6 +23,11 @@ interface NavItem {
   badge?: boolean;
 }
 
+interface SidebarProps {
+  className?: string;
+  onNavigate?: () => void;
+}
+
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/queue", label: "Queue", icon: Inbox, badge: true },
@@ -35,12 +40,12 @@ const NAV: NavItem[] = [
   { to: "/tuner", label: "Tuner", icon: Sliders },
 ];
 
-export function Sidebar() {
+export function Sidebar({ className, onNavigate }: SidebarProps) {
   return (
     <aside
-      className="w-[180px] shrink-0 border-r flex flex-col"
+      className={cn("w-[220px] md:w-[180px] shrink-0 border-r flex flex-col", className)}
       style={{
-        background: "var(--color-surface)",
+        background: "var(--color-sidebar)",
         borderColor: "var(--color-border)",
       }}
     >
@@ -59,6 +64,7 @@ export function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            onClick={onNavigate}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors",
@@ -93,6 +99,7 @@ export function Sidebar() {
       <div className="mt-auto px-2 pb-4">
         <NavLink
           to="/settings"
+          onClick={onNavigate}
           className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm"
           style={{ color: "var(--color-fg-faint)" }}
         >

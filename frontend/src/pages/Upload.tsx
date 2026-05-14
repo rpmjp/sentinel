@@ -7,14 +7,19 @@ import {
   FileSpreadsheet,
   FileUp,
   ListChecks,
+  Lock,
   UploadCloud,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Metric } from "@/components/ui/Metric";
+import { useAuth } from "@/lib/auth";
 import { useUploadTransactions, type UploadTransactionsResult } from "@/lib/hooks";
 import { fmtNumber } from "@/lib/format";
 import { toast } from "@/lib/toast";
+
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const MAX_UPLOAD_MB = MAX_UPLOAD_BYTES / (1024 * 1024);
 
 const SAMPLE_CSV = [
   "step,type,amount,nameOrig,oldbalanceOrg,newbalanceOrig,nameDest,oldbalanceDest,newbalanceDest",
@@ -25,11 +30,30 @@ const SAMPLE_CSV = [
 export default function Upload() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const upload = useUploadTransactions();
+  const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<UploadTransactionsResult | null>(null);
+  const canUpload = user?.role === "senior_analyst" || user?.role === "admin";
+
+  function selectFile(selected: File) {
+    if (!selected.name.toLowerCase().endsWith(".csv")) {
+      toast.error("Please choose a CSV file.");
+      return false;
+    }
+    if (selected.size > MAX_UPLOAD_BYTES) {
+      toast.error(`CSV is too large. Uploads are capped at ${MAX_UPLOAD_MB} MB.`);
+      return false;
+    }
+    setFile(selected);
+    return true;
+  }
 
   async function handleUpload(selected = file) {
     if (!selected) return;
+    if (!canUpload) {
+      toast.error("Batch upload requires a senior analyst or admin account.");
+      return;
+    }
     try {
       setResult(null);
       const summary = await upload.mutateAsync(selected);
@@ -63,7 +87,7 @@ export default function Upload() {
             </div>
             <div className="text-sm font-medium">Score transactions from CSV</div>
             <div className="text-xs mt-1" style={{ color: "var(--color-fg-faint)" }}>
-              Strict schema validation · max 10,000 rows · persists to Queue and Investigate
+              Senior analyst or admin only · max {MAX_UPLOAD_MB} MB / 10,000 rows · persists to Queue and Investigate
             </div>
           </div>
           <Button variant="secondary" size="sm" onClick={downloadSample}>
@@ -102,6 +126,25 @@ export default function Upload() {
         />
       </div>
 
+      {!canUpload && (
+        <Card padding="sm">
+          <div className="flex items-start gap-3">
+            <div
+              className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+              style={{ background: "var(--color-warning-soft)", color: "var(--color-warning)" }}
+            >
+              <Lock size={15} />
+            </div>
+            <div>
+              <div className="text-sm font-medium">Upload permission required</div>
+              <div className="text-xs mt-1" style={{ color: "var(--color-fg-subtle)" }}>
+                Your current role can download the sample and review the schema, but scoring a batch requires a senior analyst or admin account.
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
       <div className="grid lg:grid-cols-[1fr_360px] gap-4">
         <Card>
         <div
@@ -116,8 +159,7 @@ export default function Upload() {
             event.preventDefault();
             const dropped = event.dataTransfer.files.item(0);
             if (!dropped) return;
-            setFile(dropped);
-            handleUpload(dropped);
+            if (selectFile(dropped)) handleUpload(dropped);
           }}
           className="min-h-[240px] rounded-lg border border-dashed flex flex-col items-center justify-center gap-3 text-center cursor-pointer"
           style={{
@@ -136,7 +178,7 @@ export default function Upload() {
               {file ? file.name : "Drop CSV here or click to browse"}
             </div>
             <div className="text-xs mt-1" style={{ color: "var(--color-fg-faint)" }}>
-              Strict validation runs before scoring, so bad rows will be rejected before anything is saved.
+              CSV only · {MAX_UPLOAD_MB} MB max · strict validation runs before scoring or saving.
             </div>
           </div>
           <input
@@ -147,7 +189,7 @@ export default function Upload() {
             onChange={(event) => {
               const selected = event.target.files?.[0];
               if (!selected) return;
-              setFile(selected);
+              selectFile(selected);
             }}
           />
         </div>
@@ -159,7 +201,7 @@ export default function Upload() {
           <Button
             variant="primary"
             loading={upload.isPending}
-            disabled={!file}
+            disabled={!file || !canUpload}
             onClick={() => handleUpload()}
           >
             <FileUp size={14} /> upload and score

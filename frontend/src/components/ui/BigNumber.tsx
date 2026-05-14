@@ -43,11 +43,12 @@ export function BigNumber({
       className={cn("rounded-lg border p-4 flex flex-col gap-1.5", className)}
       style={{
         background: highlighted
-          ? "rgba(239,159,39,0.04)"
+          ? "var(--color-warning-soft)"
           : "var(--color-surface-elevated)",
         borderColor: highlighted
-          ? "rgba(239,159,39,0.3)"
+          ? "var(--color-warning)"
           : "var(--color-border)",
+        boxShadow: "var(--shadow-card)",
       }}
     >
       <div

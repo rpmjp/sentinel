@@ -39,9 +39,9 @@ const DECISION_LABELS: Record<Decision, string> = {
 };
 
 const DECISION_BG: Record<Decision, string> = {
-  confirmed_fraud: "rgba(216,90,48,0.15)",
-  false_positive: "rgba(93,202,165,0.15)",
-  escalated: "rgba(239,159,39,0.15)",
+  confirmed_fraud: "var(--color-danger-soft)",
+  false_positive: "var(--color-success-soft)",
+  escalated: "var(--color-warning-soft)",
 };
 
 const DECISION_FG: Record<Decision, string> = {

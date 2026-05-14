@@ -116,8 +116,8 @@ export default function Dashboard() {
               className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
               style={{
                 background: k.high_risk_24h > 0
-                  ? "rgba(216,90,48,0.12)"
-                  : "rgba(93,202,165,0.12)",
+                  ? "var(--color-danger-soft)"
+                  : "var(--color-success-soft)",
                 color: k.high_risk_24h > 0
                   ? "var(--color-danger)"
                   : "var(--color-success)",
@@ -273,7 +273,7 @@ export default function Dashboard() {
             </div>
             <ChartContainer height={200}>
                 <BarChart data={types.data ?? []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-grid)" />
                   <XAxis dataKey="type" stroke="var(--color-fg-faint)" fontSize={10} />
                   <YAxis stroke="var(--color-fg-faint)" fontSize={10} />
                   <Tooltip
@@ -332,7 +332,7 @@ export default function Dashboard() {
                       <stop offset="100%" stopColor="var(--color-brand)" stopOpacity={0.05} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-grid)" />
                   <XAxis dataKey="timestamp" stroke="var(--color-fg-faint)" fontSize={10} />
                   <YAxis yAxisId="left" stroke="var(--color-fg-faint)" fontSize={10} />
                   <YAxis
@@ -632,7 +632,7 @@ function CaseMiniStat({
     <Link
       to={to}
       className="rounded-md border px-3 py-2"
-      style={{ borderColor: "var(--color-border)", background: "var(--color-surface-elevated)" }}
+      style={{ borderColor: "var(--color-border)", background: "var(--color-surface-raised)" }}
     >
       <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-fg-faint)" }}>
         {label}

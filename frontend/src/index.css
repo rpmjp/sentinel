@@ -1,25 +1,31 @@
+/* Inter + JetBrains Mono via Google Fonts */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
 @import "tailwindcss";
 
 @theme {
   /* Sentinel brand — Option A: Coral + Deep Navy */
-  --color-brand: #d85a30;
-  --color-brand-hover: #c14a25;
-  --color-brand-soft: rgba(216, 90, 48, 0.12);
+  --color-brand: #e86135;
+  --color-brand-hover: #cf4e28;
+  --color-brand-soft: rgba(232, 97, 53, 0.14);
   --color-brand-fg: #ffffff;
-  --color-info: #4aa3ff;
-  --color-info-soft: rgba(74, 163, 255, 0.14);
-  --color-accent: #a8c66c;
-  --color-accent-soft: rgba(168, 198, 108, 0.14);
+  --color-info: #57b7ff;
+  --color-info-soft: rgba(87, 183, 255, 0.15);
+  --color-accent: #b8cf72;
+  --color-accent-soft: rgba(184, 207, 114, 0.16);
 
   /* Risk semantic colors */
-  --color-risk-high: #d85a30;
-  --color-risk-medium: #ef9f27;
-  --color-risk-low: #6b7a8f;
+  --color-risk-high: #e86135;
+  --color-risk-medium: #f4ad32;
+  --color-risk-low: #70819a;
 
   /* Status colors */
-  --color-success: #5dcaa5;
-  --color-warning: #ef9f27;
-  --color-danger: #d85a30;
+  --color-success: #54d4ae;
+  --color-success-soft: rgba(84, 212, 174, 0.14);
+  --color-warning: #f4ad32;
+  --color-warning-soft: rgba(244, 173, 50, 0.14);
+  --color-danger: #e86135;
+  --color-danger-soft: rgba(232, 97, 53, 0.14);
 
   /* Fonts */
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
@@ -30,42 +36,65 @@
 :root {
   color-scheme: dark;
 
-  --color-bg: #0b1426;
-  --color-surface: #070f1d;
-  --color-surface-elevated: rgba(255, 255, 255, 0.025);
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-border-strong: rgba(255, 255, 255, 0.12);
+  --color-bg: #08111f;
+  --color-sidebar: #050d19;
+  --color-topbar: rgba(8, 17, 31, 0.92);
+  --color-surface: #0c1728;
+  --color-surface-elevated: #101d31;
+  --color-surface-raised: #15243a;
+  --color-border: rgba(168, 187, 216, 0.11);
+  --color-border-strong: rgba(182, 201, 228, 0.2);
+  --color-grid: rgba(168, 187, 216, 0.09);
 
-  --color-fg: #f0f4fa;
-  --color-fg-muted: #b8c5d9;
-  --color-fg-subtle: #8fa0b8;
-  --color-fg-faint: #6b7a8f;
+  --color-fg: #eef4fb;
+  --color-fg-muted: #c0cede;
+  --color-fg-subtle: #91a5bd;
+  --color-fg-faint: #697b92;
+
+  --shadow-card: 0 12px 38px rgba(0, 0, 0, 0.18);
+  --shadow-card-hover: 0 16px 48px rgba(0, 0, 0, 0.24);
+  --shadow-focus: 0 0 0 3px rgba(87, 183, 255, 0.18);
 }
 
 /* Light theme */
 :root.light {
   color-scheme: light;
 
-  --color-bg: #fafaf7;
-  --color-surface: #f2f0e9;
-  --color-surface-elevated: #ffffff;
-  --color-border: rgba(0, 0, 0, 0.08);
-  --color-border-strong: rgba(0, 0, 0, 0.16);
+  --color-bg: #f5f3ee;
+  --color-sidebar: #ebe7dd;
+  --color-topbar: rgba(250, 249, 246, 0.94);
+  --color-surface: #f0ede5;
+  --color-surface-elevated: #fffdf9;
+  --color-surface-raised: #ffffff;
+  --color-border: rgba(44, 55, 72, 0.11);
+  --color-border-strong: rgba(44, 55, 72, 0.19);
+  --color-grid: rgba(44, 55, 72, 0.09);
 
-  --color-fg: #0b1426;
-  --color-fg-muted: #2d3748;
-  --color-fg-subtle: #4a5568;
-  --color-fg-faint: #8a8779;
+  --color-fg: #111827;
+  --color-fg-muted: #334155;
+  --color-fg-subtle: #64748b;
+  --color-fg-faint: #9a9488;
 
-  --color-brand: #993c1d;
-  --color-brand-hover: #7a3017;
-  --color-brand-soft: rgba(216, 90, 48, 0.1);
-  --color-info: #1f6fbf;
-  --color-info-soft: rgba(31, 111, 191, 0.12);
-  --color-accent: #5f731f;
-  --color-accent-soft: rgba(95, 115, 31, 0.12);
-  --color-success: #0f6e56;
-  --color-warning: #854f0b;
+  --color-brand: #b34725;
+  --color-brand-hover: #95391d;
+  --color-brand-soft: rgba(232, 97, 53, 0.12);
+  --color-info: #1f78c8;
+  --color-info-soft: rgba(31, 120, 200, 0.12);
+  --color-accent: #687d25;
+  --color-accent-soft: rgba(104, 125, 37, 0.12);
+  --color-success: #0f8061;
+  --color-success-soft: rgba(15, 128, 97, 0.1);
+  --color-warning: #99600d;
+  --color-warning-soft: rgba(153, 96, 13, 0.11);
+  --color-danger: #b34725;
+  --color-danger-soft: rgba(179, 71, 37, 0.11);
+  --color-risk-high: #c24b27;
+  --color-risk-medium: #c98217;
+  --color-risk-low: #69758a;
+
+  --shadow-card: 0 10px 28px rgba(31, 41, 55, 0.07);
+  --shadow-card-hover: 0 16px 38px rgba(31, 41, 55, 0.11);
+  --shadow-focus: 0 0 0 3px rgba(31, 120, 200, 0.14);
 }
 
 /* Base layer */
@@ -85,5 +114,41 @@ body {
   min-height: 100vh;
 }
 
-/* Inter + JetBrains Mono via Google Fonts */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+::selection {
+  background: var(--color-brand-soft);
+  color: var(--color-fg);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  outline-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+* {
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+@media (max-width: 767px) {
+  .app-content .p-6 {
+    padding: 1rem;
+  }
+
+  .app-content .gap-4 {
+    gap: 0.75rem;
+  }
+
+  .app-content .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.75rem;
+  }
+}

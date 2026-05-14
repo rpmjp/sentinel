@@ -17,10 +17,11 @@ const PADDING = {
 export function Card({ children, className, padding = "md" }: CardProps) {
   return (
     <div
-      className={cn("rounded-lg border", PADDING[padding], className)}
+      className={cn("rounded-lg border max-w-full overflow-x-auto", PADDING[padding], className)}
       style={{
         background: "var(--color-surface-elevated)",
         borderColor: "var(--color-border)",
+        boxShadow: "var(--shadow-card)",
       }}
     >
       {children}

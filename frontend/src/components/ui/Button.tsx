@@ -28,9 +28,10 @@ export function Button({
       ? { background: "var(--color-brand)", color: "var(--color-brand-fg)" }
       : variant === "secondary"
       ? {
-          background: "var(--color-surface-elevated)",
+          background: "var(--color-surface-raised)",
           color: "var(--color-fg)",
           border: "1px solid var(--color-border)",
+          boxShadow: "0 1px 0 rgba(255,255,255,0.03)",
         }
       : variant === "danger"
       ? { background: "var(--color-danger)", color: "#fff" }

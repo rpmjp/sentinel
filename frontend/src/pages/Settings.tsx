@@ -167,8 +167,8 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function RoleBadge({ role }: { role: string }) {
   const styles: Record<string, { bg: string; fg: string }> = {
-    admin: { bg: "rgba(216,90,48,0.15)", fg: "var(--color-brand)" },
-    senior_analyst: { bg: "rgba(239,159,39,0.15)", fg: "var(--color-warning)" },
+    admin: { bg: "var(--color-danger-soft)", fg: "var(--color-brand)" },
+    senior_analyst: { bg: "var(--color-warning-soft)", fg: "var(--color-warning)" },
     analyst: { bg: "var(--color-surface)", fg: "var(--color-fg-muted)" },
   };
   const s = styles[role] ?? styles.analyst;

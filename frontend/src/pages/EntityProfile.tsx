@@ -113,8 +113,8 @@ export default function EntityProfile() {
                 className="px-2 py-1 rounded-md text-xs font-mono"
                 style={{
                   background: summary.watchlist === "blocked"
-                    ? "rgba(216,90,48,0.15)"
-                    : "rgba(93,202,165,0.15)",
+                    ? "var(--color-danger-soft)"
+                    : "var(--color-success-soft)",
                   color: summary.watchlist === "blocked"
                     ? "var(--color-danger)"
                     : "var(--color-success)",
@@ -189,7 +189,7 @@ export default function EntityProfile() {
           </div>
           <ChartContainer height={260}>
               <AreaChart data={data.trend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-grid)" />
                 <XAxis dataKey="bucket" stroke="var(--color-fg-faint)" fontSize={10} />
                 <YAxis stroke="var(--color-fg-faint)" fontSize={10} />
                 <Tooltip

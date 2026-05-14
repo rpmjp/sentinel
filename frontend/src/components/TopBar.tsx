@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Sun, Moon, LogOut, Search } from "lucide-react";
+import { Sun, Moon, LogOut, Search, Menu } from "lucide-react";
 import { applyTheme, getInitialTheme, type Theme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 
 interface TopBarProps {
   title: string;
   onCommandOpen: () => void;
+  onMenuClick?: () => void;
 }
 
 function initials(name: string): string {
@@ -17,7 +18,7 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
-export function TopBar({ title, onCommandOpen }: TopBarProps) {
+export function TopBar({ title, onCommandOpen, onMenuClick }: TopBarProps) {
   const [theme, setTheme] = useState<Theme>(getInitialTheme());
   const { user, logout } = useAuth();
 
@@ -27,13 +28,24 @@ export function TopBar({ title, onCommandOpen }: TopBarProps) {
 
   return (
     <div
-      className="h-12 border-b flex items-center justify-between px-4 shrink-0"
-      style={{ borderColor: "var(--color-border)" }}
+      className="h-12 border-b flex items-center justify-between gap-3 px-3 sm:px-4 shrink-0"
+      style={{
+        background: "var(--color-topbar)",
+        borderColor: "var(--color-border)",
+        backdropFilter: "blur(12px)",
+      }}
     >
-      <div className="flex items-center gap-3">
-        <span className="font-medium text-sm">{title}</span>
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <button
+          onClick={onMenuClick}
+          className="md:hidden p-1.5 rounded-md transition-colors hover:bg-[var(--color-surface-elevated)]"
+          aria-label="Open navigation"
+        >
+          <Menu size={16} />
+        </button>
+        <span className="font-medium text-sm truncate">{title}</span>
         <span
-          className="font-mono text-xs"
+          className="hidden sm:inline font-mono text-xs truncate"
           style={{ color: "var(--color-fg-faint)" }}
         >
           {user?.tenant_slug ?? "—"}
@@ -44,14 +56,14 @@ export function TopBar({ title, onCommandOpen }: TopBarProps) {
         className="flex items-center gap-4 text-xs"
         style={{ color: "var(--color-fg-subtle)" }}
       >
-        <span className="flex items-center gap-1.5">
+        <span className="hidden lg:flex items-center gap-1.5">
           <span
             className="w-1.5 h-1.5 rounded-full"
             style={{ background: "var(--color-success)" }}
           />
           model healthy
         </span>
-        <span className="font-mono" style={{ color: "var(--color-info)" }}>
+        <span className="hidden sm:inline font-mono" style={{ color: "var(--color-info)" }}>
           p50 22ms
         </span>
 

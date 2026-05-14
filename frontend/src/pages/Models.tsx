@@ -19,11 +19,11 @@ interface ModelVersion {
 
 const STAGE_STYLES: Record<string, { bg: string; fg: string }> = {
   production: {
-    bg: "rgba(93,202,165,0.15)",
+    bg: "var(--color-success-soft)",
     fg: "var(--color-success)",
   },
   staging: {
-    bg: "rgba(239,159,39,0.15)",
+    bg: "var(--color-warning-soft)",
     fg: "var(--color-warning)",
   },
   archived: {
