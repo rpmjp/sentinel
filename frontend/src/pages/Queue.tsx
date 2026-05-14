@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { RiskBadge, DecisionBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { EmptyState, SkeletonRows } from "@/components/ui/States";
 import { useQueue } from "@/lib/hooks";
 import { fmtCurrencyCompact, fmtRelativeTime, fmtScore } from "@/lib/format";
 import type { RiskBand } from "@/lib/types";
@@ -29,6 +30,16 @@ export default function Queue() {
   const { data, isLoading } = useQueue(params);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / pageSize)) : 1;
+  const activeFilters = [
+    risk !== "all" ? { label: `risk: ${risk}`, clear: () => setRisk("all") } : null,
+    decided !== "all" ? { label: `status: ${decided}`, clear: () => setDecided("all") } : null,
+  ].filter((item): item is { label: string; clear: () => void } => item !== null);
+
+  function clearFilters() {
+    setRisk("all");
+    setDecided("all");
+    setPage(1);
+  }
 
   return (
     <div className="p-6 space-y-4 max-w-6xl">
@@ -81,6 +92,33 @@ export default function Queue() {
             {data ? `${data.total.toLocaleString()} results` : "—"}
           </div>
         </div>
+        {activeFilters.length > 0 && (
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            {activeFilters.map((filter) => (
+              <button
+                key={filter.label}
+                onClick={() => {
+                  filter.clear();
+                  setPage(1);
+                }}
+                className="px-2 py-1 rounded-md text-xs"
+                style={{
+                  background: "var(--color-brand-soft)",
+                  color: "var(--color-brand)",
+                }}
+              >
+                {filter.label} ×
+              </button>
+            ))}
+            <button
+              onClick={clearFilters}
+              className="text-xs"
+              style={{ color: "var(--color-fg-faint)" }}
+            >
+              clear all
+            </button>
+          </div>
+        )}
       </Card>
 
       {/* Table */}
@@ -102,24 +140,23 @@ export default function Queue() {
         </div>
 
         {isLoading ? (
-          <div
-            className="px-4 py-6 text-sm"
-            style={{ color: "var(--color-fg-subtle)" }}
-          >
-            Loading…
-          </div>
+          <SkeletonRows rows={8} />
         ) : data?.items.length === 0 ? (
-          <div
-            className="px-4 py-12 text-sm text-center"
-            style={{ color: "var(--color-fg-subtle)" }}
-          >
-            No transactions match these filters.
-          </div>
+          <EmptyState
+            title="No queue matches"
+            description="Try clearing filters or start the replay to generate fresh activity."
+            action={
+              <Button variant="secondary" size="sm" onClick={clearFilters}>
+                clear filters
+              </Button>
+            }
+          />
         ) : (
           data!.items.map((item) => (
             <Link
               key={item.transaction_id}
               to={`/transactions/${item.transaction_id}`}
+              state={{ returnTo: "/queue", returnLabel: "queue" }}
               className="grid grid-cols-[60px_70px_1fr_110px_110px_100px] gap-3 px-4 py-3 border-t items-center text-sm transition-colors hover:bg-[var(--color-surface-elevated)]"
               style={{ borderColor: "var(--color-border)" }}
             >
@@ -129,7 +166,21 @@ export default function Queue() {
                 className="font-mono text-xs truncate"
                 style={{ color: "var(--color-fg-muted)" }}
               >
-                {item.name_orig} → {item.name_dest}
+                <Link
+                  to={`/entities/${encodeURIComponent(item.name_orig)}`}
+                  onClick={(event) => event.stopPropagation()}
+                  style={{ color: "var(--color-brand)" }}
+                >
+                  {item.name_orig}
+                </Link>
+                {" → "}
+                <Link
+                  to={`/entities/${encodeURIComponent(item.name_dest)}`}
+                  onClick={(event) => event.stopPropagation()}
+                  style={{ color: "var(--color-brand)" }}
+                >
+                  {item.name_dest}
+                </Link>
                 <span style={{ color: "var(--color-fg-faint)" }}>
                   {" · "}
                   {item.type}

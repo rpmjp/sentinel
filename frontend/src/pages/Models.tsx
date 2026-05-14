@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Cpu, GitBranch } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, Cpu, GitBranch } from "lucide-react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { fmtScore, fmtRelativeTime } from "@/lib/format";
@@ -75,6 +76,22 @@ export default function Models() {
           All versions trained for this tenant. Production stage is what
           /score uses.
         </div>
+        <div className="flex gap-3 mt-3 text-xs">
+          <Link
+            to="/tuner"
+            className="inline-flex items-center gap-1"
+            style={{ color: "var(--color-brand)" }}
+          >
+            tune threshold <ArrowRight size={12} />
+          </Link>
+          <Link
+            to="/drift"
+            className="inline-flex items-center gap-1"
+            style={{ color: "var(--color-brand)" }}
+          >
+            inspect drift <ArrowRight size={12} />
+          </Link>
+        </div>
       </Card>
 
       {data.length === 0 ? (
@@ -132,6 +149,15 @@ export default function Models() {
                     <div className="font-mono text-lg font-medium">
                       {m.threshold.toFixed(2)}
                     </div>
+                    {m.stage === "production" && (
+                      <Link
+                        to="/tuner"
+                        className="text-xs inline-flex items-center gap-1"
+                        style={{ color: "var(--color-brand)" }}
+                      >
+                        optimize <ArrowRight size={12} />
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

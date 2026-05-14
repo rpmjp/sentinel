@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
-import type { FeedbackPayload, QueueResponse, TransactionDetail } from "./types";
+import type { Decision, FeedbackPayload, QueueResponse, RiskBand, TransactionDetail } from "./types";
 
 export interface DashboardKpis {
   open_cases: number;
@@ -90,13 +90,13 @@ export interface InvestigateParams {
 export interface InvestigateItem {
   transaction_id: string;
   score: number;
-  risk_band: "high" | "medium" | "low";
+  risk_band: RiskBand;
   amount: number;
   type: string;
   name_orig: string;
   name_dest: string;
   scored_at: string;
-  decision: string | null;
+  decision: Decision | null;
 }
 
 export interface InvestigateStats {
@@ -131,7 +131,7 @@ export function useBulkAction() {
   return useMutation({
     mutationFn: async (payload: {
       transaction_ids: string[];
-      decision: string;
+      decision: Decision;
       notes?: string;
     }) => {
       const { data } = await api.post<{ updated: number }>(
@@ -144,6 +144,144 @@ export function useBulkAction() {
       qc.invalidateQueries({ queryKey: ["investigate"] });
       qc.invalidateQueries({ queryKey: ["queue"] });
       qc.invalidateQueries({ queryKey: ["kpis"] });
+    },
+  });
+}
+
+export interface EntitySummary {
+  account_id: string;
+  total_transactions: number;
+  sent_count: number;
+  received_count: number;
+  total_amount: number;
+  high_risk_count: number;
+  confirmed_fraud_count: number;
+  avg_score: number;
+  first_seen: string | null;
+  last_seen: string | null;
+  watchlist: "blocked" | "trusted" | null;
+}
+
+export interface EntityTransaction {
+  transaction_id: string;
+  direction: "sent" | "received";
+  counterparty: string;
+  type: string;
+  amount: number;
+  score: number;
+  risk_band: RiskBand;
+  scored_at: string;
+  decision: Decision | null;
+}
+
+export interface EntityTrendPoint {
+  bucket: string;
+  txn_count: number;
+  high_risk_count: number;
+  avg_score: number;
+}
+
+export interface EntityGraphNode {
+  id: string;
+  label: string;
+  role: "entity" | "counterparty";
+  risk_score: number;
+  amount: number;
+}
+
+export interface EntityGraphEdge {
+  source: string;
+  target: string;
+  count: number;
+  amount: number;
+}
+
+export interface EntityProfile {
+  summary: EntitySummary;
+  transactions: EntityTransaction[];
+  trend: EntityTrendPoint[];
+  graph: {
+    nodes: EntityGraphNode[];
+    edges: EntityGraphEdge[];
+  };
+}
+
+export function useEntityProfile(accountId: string | undefined) {
+  return useQuery({
+    queryKey: ["entity-profile", accountId],
+    queryFn: async () => {
+      const { data } = await api.get<EntityProfile>(
+        `/entities/${encodeURIComponent(accountId ?? "")}`,
+      );
+      return data;
+    },
+    enabled: !!accountId,
+  });
+}
+
+export interface WatchlistItem {
+  id: string;
+  account_id: string;
+  list_type: "blocked" | "trusted";
+  reason: string | null;
+  created_at: string;
+}
+
+export function useWatchlists() {
+  return useQuery({
+    queryKey: ["watchlists"],
+    queryFn: async () => {
+      const { data } = await api.get<{ items: WatchlistItem[] }>("/watchlists");
+      return data;
+    },
+  });
+}
+
+export function useAddWatchlistEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      account_id: string;
+      list_type: "blocked" | "trusted";
+      reason?: string;
+    }) => {
+      const { data } = await api.post<WatchlistItem>("/watchlists", payload);
+      return data;
+    },
+    onSuccess: (_data, payload) => {
+      qc.invalidateQueries({ queryKey: ["watchlists"] });
+      qc.invalidateQueries({ queryKey: ["entity-profile", payload.account_id] });
+    },
+  });
+}
+
+export function useDeleteWatchlistEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (entryId: string) => {
+      await api.delete(`/watchlists/${entryId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["watchlists"] });
+      qc.invalidateQueries({ queryKey: ["entity-profile"] });
+    },
+  });
+}
+
+export function useRemoveWatchlistAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      account_id: string;
+      list_type: "blocked" | "trusted";
+    }) => {
+      await api.delete(
+        `/watchlists/account/${encodeURIComponent(payload.account_id)}/${payload.list_type}`,
+      );
+    },
+    onSuccess: (_data, payload) => {
+      qc.invalidateQueries({ queryKey: ["watchlists"] });
+      qc.invalidateQueries({ queryKey: ["entity-profile", payload.account_id] });
     },
   });
 }

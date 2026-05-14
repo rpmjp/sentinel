@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
+  Ban,
   CheckCircle2,
   XCircle,
   AlertTriangle,
@@ -10,9 +11,11 @@ import {
 import { Card } from "@/components/ui/Card";
 import { RiskBadge, DecisionBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { EmptyState, SkeletonRows } from "@/components/ui/States";
 import { ShapWaterfall } from "@/components/ShapWaterfall";
 import {
   useSimilarTransactions,
+  useAddWatchlistEntry,
   useSubmitFeedback,
   useTransaction,
 } from "@/lib/hooks";
@@ -28,15 +31,24 @@ import { toast } from "@/lib/toast";
 export default function TransactionDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { data, isLoading, error } = useTransaction(id);
   const similar = useSimilarTransactions(id);
   const feedback = useSubmitFeedback(id);
+  const addWatchlist = useAddWatchlistEntry();
   const [notes, setNotes] = useState("");
+  const returnState = location.state as
+    | { returnTo?: string; returnLabel?: string }
+    | null;
+  const returnTo = returnState?.returnTo ?? "/queue";
+  const returnLabel = returnState?.returnLabel ?? "queue";
 
   if (isLoading) {
     return (
-      <div className="p-6 text-sm" style={{ color: "var(--color-fg-subtle)" }}>
-        Loading transaction…
+      <div className="p-6 space-y-4 max-w-5xl">
+        <Card padding="none">
+          <SkeletonRows rows={4} columns="1fr 90px 120px" />
+        </Card>
       </div>
     );
   }
@@ -56,9 +68,9 @@ export default function TransactionDetail() {
             variant="secondary"
             size="sm"
             className="mt-4"
-            onClick={() => navigate("/queue")}
+            onClick={() => navigate(returnTo)}
           >
-            <ArrowLeft size={12} /> back to queue
+            <ArrowLeft size={12} /> back to {returnLabel}
           </Button>
         </Card>
       </div>
@@ -77,17 +89,32 @@ export default function TransactionDetail() {
     }
   }
 
+  async function blockSender() {
+    const transaction = data;
+    if (!transaction) return;
+    try {
+      await addWatchlist.mutateAsync({
+        account_id: transaction.name_orig,
+        list_type: "blocked",
+        reason: `Blocked from transaction ${transaction.transaction_id}`,
+      });
+      toast.success(`${transaction.name_orig} added to blocklist`);
+    } catch {
+      toast.error("Could not add sender to blocklist");
+    }
+  }
+
   return (
     <div className="p-6 space-y-4 max-w-5xl">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <Link
-            to="/queue"
+            to={returnTo}
             className="text-xs flex items-center gap-1 mb-2"
             style={{ color: "var(--color-fg-subtle)" }}
           >
-            <ArrowLeft size={12} /> back to queue
+            <ArrowLeft size={12} /> back to {returnLabel}
           </Link>
           <div className="flex items-center gap-3">
             <RiskBadge risk={data.risk_band} />
@@ -108,6 +135,39 @@ export default function TransactionDetail() {
         </div>
 
         <DecisionBadge decision={data.decision} />
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        <Link
+          to={`/entities/${encodeURIComponent(data.name_orig)}`}
+          className="text-xs px-2 py-1 rounded-md"
+          style={{
+            background: "var(--color-surface-elevated)",
+            border: "1px solid var(--color-border)",
+            color: "var(--color-brand)",
+          }}
+        >
+          sender profile
+        </Link>
+        <Link
+          to={`/entities/${encodeURIComponent(data.name_dest)}`}
+          className="text-xs px-2 py-1 rounded-md"
+          style={{
+            background: "var(--color-surface-elevated)",
+            border: "1px solid var(--color-border)",
+            color: "var(--color-brand)",
+          }}
+        >
+          receiver profile
+        </Link>
+        <Button
+          variant="danger"
+          size="sm"
+          loading={addWatchlist.isPending}
+          onClick={blockSender}
+        >
+          <Ban size={12} /> block sender
+        </Button>
       </div>
 
       {/* Action bar */}
@@ -185,6 +245,25 @@ export default function TransactionDetail() {
         </Card>
       )}
 
+      <Card padding="sm">
+        <div
+          className="text-[10px] uppercase tracking-wider mb-3"
+          style={{ color: "var(--color-fg-subtle)" }}
+        >
+          Audit trail
+        </div>
+        <div className="grid md:grid-cols-4 gap-2">
+          <AuditStep label="received" value={fmtRelativeTime(data.received_at)} done />
+          <AuditStep label="scored" value={fmtRelativeTime(data.scored_at)} done />
+          <AuditStep label="queued" value={data.risk_band} done />
+          <AuditStep
+            label="decision"
+            value={data.decided_at ? fmtRelativeTime(data.decided_at) : "pending"}
+            done={!!data.decided_at}
+          />
+        </div>
+      </Card>
+
       <div className="grid md:grid-cols-3 gap-4">
         {/* SHAP — wide */}
         <Card className="md:col-span-2">
@@ -244,7 +323,13 @@ export default function TransactionDetail() {
           </div>
           <dl className="space-y-2 text-xs">
             <Row label="ID">
-              <span className="font-mono">{data.name_orig}</span>
+              <Link
+                to={`/entities/${encodeURIComponent(data.name_orig)}`}
+                className="font-mono"
+                style={{ color: "var(--color-brand)" }}
+              >
+                {data.name_orig}
+              </Link>
             </Row>
             <Row label="Balance before">
               <span className="font-mono">
@@ -266,7 +351,13 @@ export default function TransactionDetail() {
           </div>
           <dl className="space-y-2 text-xs">
             <Row label="ID">
-              <span className="font-mono">{data.name_dest}</span>
+              <Link
+                to={`/entities/${encodeURIComponent(data.name_dest)}`}
+                className="font-mono"
+                style={{ color: "var(--color-brand)" }}
+              >
+                {data.name_dest}
+              </Link>
             </Row>
             <Row label="Balance before">
               <span className="font-mono">
@@ -289,24 +380,18 @@ export default function TransactionDetail() {
         </div>
 
         {similar.isLoading ? (
-          <div
-            className="px-4 py-6 text-sm"
-            style={{ color: "var(--color-fg-subtle)" }}
-          >
-            Loading similar transactions…
-          </div>
+          <SkeletonRows rows={4} columns="60px 70px 1fr 110px 110px" />
         ) : similar.data?.length === 0 ? (
-          <div
-            className="px-4 py-6 text-sm"
-            style={{ color: "var(--color-fg-subtle)" }}
-          >
-            No similar transactions found.
-          </div>
+          <EmptyState
+            title="No similar transactions"
+            description="This transaction has no nearby matches by type, amount, and risk band."
+          />
         ) : (
           similar.data?.map((item) => (
             <Link
               key={item.transaction_id}
               to={`/transactions/${item.transaction_id}`}
+              state={{ returnTo, returnLabel }}
               className="grid grid-cols-[60px_70px_1fr_110px_110px] gap-3 px-4 py-3 border-t items-center text-sm hover:bg-[var(--color-surface-elevated)]"
               style={{ borderColor: "var(--color-border)" }}
             >
@@ -334,6 +419,39 @@ export default function TransactionDetail() {
           ))
         )}
       </Card>
+    </div>
+  );
+}
+
+function AuditStep({
+  label,
+  value,
+  done,
+}: {
+  label: string;
+  value: string;
+  done: boolean;
+}) {
+  return (
+    <div
+      className="rounded-md border px-3 py-2"
+      style={{
+        background: "var(--color-surface)",
+        borderColor: done ? "var(--color-border-strong)" : "var(--color-border)",
+      }}
+    >
+      <div
+        className="text-[10px] uppercase tracking-wider"
+        style={{ color: "var(--color-fg-faint)" }}
+      >
+        {label}
+      </div>
+      <div
+        className="text-xs font-mono mt-1"
+        style={{ color: done ? "var(--color-fg)" : "var(--color-fg-subtle)" }}
+      >
+        {value}
+      </div>
     </div>
   );
 }

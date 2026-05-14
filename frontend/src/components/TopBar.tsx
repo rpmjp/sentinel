@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Sun, Moon, LogOut } from "lucide-react";
+import { Sun, Moon, LogOut, Search } from "lucide-react";
 import { applyTheme, getInitialTheme, type Theme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 
 interface TopBarProps {
   title: string;
+  onCommandOpen: () => void;
 }
 
 function initials(name: string): string {
@@ -16,7 +17,7 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
-export function TopBar({ title }: TopBarProps) {
+export function TopBar({ title, onCommandOpen }: TopBarProps) {
   const [theme, setTheme] = useState<Theme>(getInitialTheme());
   const { user, logout } = useAuth();
 
@@ -51,6 +52,21 @@ export function TopBar({ title }: TopBarProps) {
           model healthy
         </span>
         <span className="font-mono">p50 22ms</span>
+
+        <button
+          onClick={onCommandOpen}
+          className="hidden md:flex items-center gap-2 rounded-md border px-2 py-1 transition-colors hover:bg-[var(--color-surface-elevated)]"
+          style={{
+            borderColor: "var(--color-border)",
+            color: "var(--color-fg-subtle)",
+          }}
+        >
+          <Search size={12} />
+          <span>Search</span>
+          <span className="font-mono text-[10px]" style={{ color: "var(--color-fg-faint)" }}>
+            Ctrl K
+          </span>
+        </button>
 
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}

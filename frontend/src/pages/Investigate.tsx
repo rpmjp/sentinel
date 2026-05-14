@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   Search, ChevronLeft, ChevronRight, X, SlidersHorizontal,
   Download, CheckSquare, Square, AlertCircle,
@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { RiskBadge, DecisionBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Metric } from "@/components/ui/Metric";
+import { EmptyState, SkeletonRows } from "@/components/ui/States";
 import {
   useInvestigate, useBulkAction,
   type InvestigateParams, type InvestigateResponse,
@@ -35,27 +36,46 @@ const PRESETS: Preset[] = [
 ];
 
 export default function Investigate() {
-  const [params, setParams] = useState<InvestigateParams>({ page: 1, page_size: 50 });
-  const [draftQ, setDraftQ] = useState("");
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [params, setParams] = useState<InvestigateParams>(() =>
+    paramsFromSearch(searchParams),
+  );
+  const [draftQ, setDraftQ] = useState(params.q ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkNotes, setBulkNotes] = useState("");
 
   const { data, isLoading } = useInvestigate(params);
   const bulk = useBulkAction();
 
+  useEffect(() => {
+    const next = paramsFromSearch(searchParams);
+    setParams(next);
+    setDraftQ(next.q ?? "");
+    setSelected(new Set());
+  }, [searchParams]);
+
   function update<K extends keyof InvestigateParams>(key: K, value: InvestigateParams[K] | undefined) {
-    setParams((p) => ({ ...p, [key]: value, page: 1 }));
+    setParams((p) => {
+      const next = { ...p, [key]: value, page: 1 };
+      setSearchParams(searchFromParams(next));
+      return next;
+    });
     setSelected(new Set());
   }
 
   function clearFilters() {
-    setParams({ page: 1, page_size: 50 });
+    const next = { page: 1, page_size: 50 };
+    setParams(next);
+    setSearchParams(searchFromParams(next));
     setDraftQ("");
     setSelected(new Set());
   }
 
   function applyPreset(p: Preset) {
-    setParams({ ...p.params, page: 1, page_size: 50 });
+    const next = { ...p.params, page: 1, page_size: 50 };
+    setParams(next);
+    setSearchParams(searchFromParams(next));
     setDraftQ(p.params.q ?? "");
     setSelected(new Set());
   }
@@ -81,7 +101,7 @@ export default function Investigate() {
     }
   }
 
-  async function handleBulk(decision: string) {
+  async function handleBulk(decision: Decision) {
     if (selected.size === 0) return;
     try {
       const result = await bulk.mutateAsync({
@@ -132,6 +152,8 @@ export default function Investigate() {
         .filter((v) => v !== undefined && v !== "").length,
     [params],
   );
+  const activeFilters = filterChips(params);
+  const returnTo = `${location.pathname}${location.search}`;
 
   return (
     <div className="p-6 space-y-4 max-w-6xl">
@@ -163,6 +185,31 @@ export default function Investigate() {
           </button>
         ))}
       </div>
+
+      {activeFilters.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {activeFilters.map((filter) => (
+            <button
+              key={filter.key}
+              onClick={() => update(filter.key, undefined)}
+              className="px-2 py-1 rounded-md text-xs"
+              style={{
+                background: "var(--color-brand-soft)",
+                color: "var(--color-brand)",
+              }}
+            >
+              {filter.label} ×
+            </button>
+          ))}
+          <button
+            onClick={clearFilters}
+            className="text-xs"
+            style={{ color: "var(--color-fg-faint)" }}
+          >
+            clear all
+          </button>
+        </div>
+      )}
 
       {/* Global search */}
       <Card padding="sm">
@@ -265,6 +312,7 @@ export default function Investigate() {
         selected={selected}
         onToggle={toggleSelect}
         onToggleAll={toggleSelectAll}
+        returnTo={returnTo}
       />
 
       {/* Pagination */}
@@ -275,11 +323,19 @@ export default function Investigate() {
           </div>
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" disabled={(params.page ?? 1) <= 1}
-              onClick={() => setParams((p) => ({ ...p, page: Math.max(1, (p.page ?? 1) - 1) }))}>
+              onClick={() => setParams((p) => {
+                const next = { ...p, page: Math.max(1, (p.page ?? 1) - 1) };
+                setSearchParams(searchFromParams(next));
+                return next;
+              })}>
               <ChevronLeft size={12} /> prev
             </Button>
             <Button variant="secondary" size="sm" disabled={(params.page ?? 1) >= totalPages}
-              onClick={() => setParams((p) => ({ ...p, page: (p.page ?? 1) + 1 }))}>
+              onClick={() => setParams((p) => {
+                const next = { ...p, page: (p.page ?? 1) + 1 };
+                setSearchParams(searchFromParams(next));
+                return next;
+              })}>
               next <ChevronRight size={12} />
             </Button>
           </div>
@@ -289,14 +345,51 @@ export default function Investigate() {
   );
 }
 
+function paramsFromSearch(searchParams: URLSearchParams): InvestigateParams {
+  return {
+    q: stringParam(searchParams, "q"),
+    txn_type: stringParam(searchParams, "txn_type"),
+    risk: stringParam(searchParams, "risk"),
+    decision: stringParam(searchParams, "decision"),
+    min_amount: numberParam(searchParams, "min_amount"),
+    max_amount: numberParam(searchParams, "max_amount"),
+    min_score: numberParam(searchParams, "min_score"),
+    max_score: numberParam(searchParams, "max_score"),
+    page: numberParam(searchParams, "page") ?? 1,
+    page_size: numberParam(searchParams, "page_size") ?? 50,
+  };
+}
+
+function stringParam(searchParams: URLSearchParams, key: string) {
+  return searchParams.get(key) || undefined;
+}
+
+function numberParam(searchParams: URLSearchParams, key: string) {
+  const value = searchParams.get(key);
+  if (!value) return undefined;
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : undefined;
+}
+
+function searchFromParams(params: InvestigateParams) {
+  const next = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") {
+      next.set(key, String(value));
+    }
+  });
+  return next;
+}
+
 function Results({
-  data, isLoading, selected, onToggle, onToggleAll,
+  data, isLoading, selected, onToggle, onToggleAll, returnTo,
 }: {
   data: InvestigateResponse | undefined;
   isLoading: boolean;
   selected: Set<string>;
   onToggle: (id: string) => void;
   onToggleAll: () => void;
+  returnTo: string;
 }) {
   const allSelected = !!data && data.items.length > 0 && selected.size === data.items.length;
   return (
@@ -317,11 +410,15 @@ function Results({
       </div>
 
       {isLoading ? (
-        <div className="px-4 py-6 text-sm" style={{ color: "var(--color-fg-subtle)" }}>Searching…</div>
+        <SkeletonRows
+          rows={8}
+          columns="32px 60px 70px 1fr 110px 110px 100px"
+        />
       ) : data?.items.length === 0 ? (
-        <div className="px-4 py-12 text-sm text-center" style={{ color: "var(--color-fg-subtle)" }}>
-          No transactions match your filters.
-        </div>
+        <EmptyState
+          title="No matching transactions"
+          description="Clear filters or try one of the investigation presets."
+        />
       ) : (
         data!.items.map((item) => {
           const isSel = selected.has(item.transaction_id);
@@ -338,11 +435,29 @@ function Results({
               >
                 {isSel ? <CheckSquare size={14} /> : <Square size={14} />}
               </button>
-              <Link to={`/transactions/${item.transaction_id}`} className="contents">
+              <Link
+                to={`/transactions/${item.transaction_id}`}
+                state={{ returnTo, returnLabel: "investigation results" }}
+                className="contents"
+              >
                 <RiskBadge risk={item.risk_band} />
                 <span className="font-mono font-medium">{fmtScore(item.score)}</span>
                 <span className="font-mono text-xs truncate" style={{ color: "var(--color-fg-muted)" }}>
-                  {item.name_orig} → {item.name_dest}
+                  <Link
+                    to={`/entities/${encodeURIComponent(item.name_orig)}`}
+                    onClick={(event) => event.stopPropagation()}
+                    style={{ color: "var(--color-brand)" }}
+                  >
+                    {item.name_orig}
+                  </Link>
+                  {" → "}
+                  <Link
+                    to={`/entities/${encodeURIComponent(item.name_dest)}`}
+                    onClick={(event) => event.stopPropagation()}
+                    style={{ color: "var(--color-brand)" }}
+                  >
+                    {item.name_dest}
+                  </Link>
                   <span style={{ color: "var(--color-fg-faint)" }}>{" · "}{item.type}</span>
                 </span>
                 <span className="font-mono text-right">{fmtCurrencyCompact(item.amount)}</span>
@@ -357,6 +472,22 @@ function Results({
       )}
     </Card>
   );
+}
+
+function filterChips(params: InvestigateParams): Array<{
+  key: keyof InvestigateParams;
+  label: string;
+}> {
+  const chips: Array<{ key: keyof InvestigateParams; label: string }> = [];
+  if (params.q) chips.push({ key: "q", label: `search: ${params.q}` });
+  if (params.txn_type) chips.push({ key: "txn_type", label: `type: ${params.txn_type}` });
+  if (params.risk) chips.push({ key: "risk", label: `risk: ${params.risk}` });
+  if (params.decision) chips.push({ key: "decision", label: `decision: ${params.decision}` });
+  if (params.min_amount !== undefined) chips.push({ key: "min_amount", label: `min $${params.min_amount}` });
+  if (params.max_amount !== undefined) chips.push({ key: "max_amount", label: `max $${params.max_amount}` });
+  if (params.min_score !== undefined) chips.push({ key: "min_score", label: `min score ${params.min_score}` });
+  if (params.max_score !== undefined) chips.push({ key: "max_score", label: `max score ${params.max_score}` });
+  return chips;
 }
 
 function Select({ label, value, options, onChange }: {

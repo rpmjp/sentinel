@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import {
   ComposedChart,
   Line,
@@ -9,7 +10,7 @@ import {
   Tooltip,
   ReferenceLine,
 } from "recharts";
-import { Sliders } from "lucide-react";
+import { ArrowRight, Sliders } from "lucide-react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { Metric } from "@/components/ui/Metric";
@@ -95,6 +96,22 @@ export default function Tuner() {
               <span>
                 Production τ: <span className="font-mono">{data.current_threshold.toFixed(2)}</span>
               </span>
+            </div>
+            <div className="flex gap-3 mt-2 text-xs">
+              <Link
+                to="/models"
+                className="inline-flex items-center gap-1"
+                style={{ color: "var(--color-brand)" }}
+              >
+                production model <ArrowRight size={12} />
+              </Link>
+              <Link
+                to="/investigate?risk=high"
+                className="inline-flex items-center gap-1"
+                style={{ color: "var(--color-brand)" }}
+              >
+                review flagged cases <ArrowRight size={12} />
+              </Link>
             </div>
           </div>
           <button

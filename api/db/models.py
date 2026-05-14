@@ -174,6 +174,29 @@ class AnalystDecision(Base):
     )
 
 
+class WatchlistEntry(Base):
+    """Tenant-managed account watchlist for block/trust decisions."""
+
+    __tablename__ = "watchlist_entries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    account_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    list_type: Mapped[str] = mapped_column(String(16), nullable=False)  # blocked|trusted
+    reason: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_watchlist_tenant_account", "tenant_id", "account_id"),
+        Index("ux_watchlist_tenant_account_type", "tenant_id", "account_id", "list_type", unique=True),
+    )
+
+
 class DriftSnapshot(Base):
     """Periodic drift measurement for monitoring."""
 

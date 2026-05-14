@@ -10,6 +10,8 @@ import Drift from "@/pages/Drift";
 import Models from "@/pages/Models";
 import Investigate from "@/pages/Investigate";
 import Settings from "@/pages/Settings";
+import EntityProfile from "@/pages/EntityProfile";
+import Watchlists from "@/pages/Watchlists";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -25,7 +27,9 @@ export const router = createBrowserRouter([
       { path: "dashboard", element: <Dashboard /> },
       { path: "queue", element: <Queue /> },
       { path: "transactions/:id", element: <TransactionDetail /> },
+      { path: "entities/:accountId", element: <EntityProfile /> },
       { path: "investigate", element: <Investigate /> },
+      { path: "watchlists", element: <Watchlists /> },
       { path: "models", element: <Models /> },
       { path: "drift", element: <Drift /> },
       { path: "tuner", element: <Tuner /> },

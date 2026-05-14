@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, AlertCircle } from "lucide-react";
+import { ArrowRight, AlertCircle, Clock, ShieldAlert } from "lucide-react";
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis,
+  AreaChart, Area, BarChart, Bar, Line, XAxis, YAxis,
   ResponsiveContainer, Tooltip, CartesianGrid,
 } from "recharts";
 import { Card } from "@/components/ui/Card";
@@ -11,18 +12,23 @@ import { Heatmap } from "@/components/Heatmap";
 import { LiveTicker } from "@/components/LiveTicker";
 import { ReplayControl } from "@/components/ReplayControl";
 import {
-  useKpis, useQueue, useTimeseries, useHeatmap, useTypeBreakdown,
+  useKpis, useQueue, useTimeseries, useHeatmap, useTypeBreakdown, useSparkline,
 } from "@/lib/hooks";
 import {
-  fmtCurrencyCompact, fmtNumber, fmtRelativeTime, fmtScore,
+  fmtCurrencyCompact, fmtNumber, fmtPct, fmtRelativeTime, fmtScore,
 } from "@/lib/format";
 
+type HeatmapMode = "count" | "fraud_rate";
+
 export default function Dashboard() {
+  const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>("count");
   const kpis = useKpis();
   const ts = useTimeseries(24);
   const heatmap = useHeatmap();
   const types = useTypeBreakdown();
+  const sparkline = useSparkline();
   const recent = useQueue({ risk: "high", page_size: 5 });
+  const pendingHighRisk = useQueue({ risk: "high", page_size: 1 });
 
   if (kpis.isLoading) {
     return (
@@ -44,44 +50,157 @@ export default function Dashboard() {
   }
 
   const k = kpis.data;
+  const totalRisk24h = k.high_risk_24h + k.medium_risk_24h + k.low_risk_24h;
+  const highRiskShare = totalRisk24h > 0 ? k.high_risk_24h / totalRisk24h : 0;
+  const fraudRateSeries = (ts.data ?? []).map((point) => ({
+    ...point,
+    fraud_rate: point.txn_count > 0 ? point.fraud_count / point.txn_count : 0,
+  }));
+  const peakBucket = fraudRateSeries.reduce(
+    (peak, point) => (point.fraud_count > peak.fraud_count ? point : peak),
+    fraudRateSeries[0] ?? {
+      timestamp: "--",
+      txn_count: 0,
+      fraud_count: 0,
+      blocked_amount: 0,
+      avg_score: 0,
+      fraud_rate: 0,
+    },
+  );
+  const topRiskType = (types.data ?? []).reduce(
+    (top, item) => (item.high > top.high ? item : top),
+    { type: "none", high: 0, medium: 0, low: 0 },
+  );
+  const incidentTone = k.high_risk_24h > 0 || k.open_cases > 0 ? "Elevated" : "Normal";
+  const oldestPending = recent.data?.items.at(-1);
+  const topTypePath = topRiskType.type === "none"
+    ? investigatePath({ risk: "high" })
+    : investigatePath({ risk: "high", txn_type: topRiskType.type });
 
   return (
     <div className="p-6 space-y-4">
+      {/* Incident pulse */}
+      <Card padding="sm">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+              style={{
+                background: k.high_risk_24h > 0
+                  ? "rgba(216,90,48,0.12)"
+                  : "rgba(93,202,165,0.12)",
+                color: k.high_risk_24h > 0
+                  ? "var(--color-danger)"
+                  : "var(--color-success)",
+              }}
+            >
+              <ShieldAlert size={16} />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-medium">
+                {incidentTone} fraud posture
+              </div>
+              <div
+                className="text-xs truncate"
+                style={{ color: "var(--color-fg-subtle)" }}
+              >
+                {k.high_risk_24h} high-risk in 24h · {fmtCurrencyCompact(k.blocked_amount_24h)} exposure blocked · {topRiskType.type} leading risk type
+              </div>
+            </div>
+          </div>
+          <Link
+            to={topTypePath}
+            className="text-xs inline-flex items-center gap-1"
+            style={{ color: "var(--color-brand)" }}
+          >
+            investigate <ArrowRight size={12} />
+          </Link>
+        </div>
+      </Card>
+
       {/* Headline KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <BigNumber
-          label="Open cases"
-          value={k.open_cases}
-          format={fmtNumber}
-          delta={`${k.high_risk_24h} high-risk in 24h`}
-          deltaTone={k.open_cases > 0 ? "negative" : "neutral"}
-          highlighted={k.open_cases > 100}
-          accent={k.open_cases > 100 ? "var(--color-warning)" : undefined}
-        />
-        <BigNumber
-          label="Blocked (24h)"
-          value={k.blocked_amount_24h}
-          format={fmtCurrencyCompact}
-          delta="vs $0 baseline"
-          deltaTone="positive"
-          accent="var(--color-success)"
-        />
-        <BigNumber
-          label="Throughput (24h)"
-          value={k.txn_count_24h}
-          format={fmtNumber}
-          delta="transactions scored"
-          deltaTone="neutral"
-        />
-        <BigNumber
-          label="Avg score"
-          value={k.avg_score_24h}
-          decimals={3}
-          format={(n) => n.toFixed(3)}
-          delta="PR-AUC 0.992"
-          deltaTone="neutral"
-        />
+        <Link to={investigatePath({ risk: "high", decision: "pending" })}>
+          <BigNumber
+            label="Open cases"
+            value={k.open_cases}
+            format={fmtNumber}
+            delta={`${k.high_risk_24h} high-risk in 24h`}
+            deltaTone={k.open_cases > 0 ? "negative" : "neutral"}
+            highlighted={k.open_cases > 100}
+            accent={k.open_cases > 100 ? "var(--color-warning)" : undefined}
+            sparkline={<TinyBars values={[k.low_risk_24h, k.medium_risk_24h, k.high_risk_24h]} />}
+          />
+        </Link>
+        <Link to={investigatePath({ risk: "high" })}>
+          <BigNumber
+            label="Blocked (24h)"
+            value={k.blocked_amount_24h}
+            format={fmtCurrencyCompact}
+            delta="review high-risk exposure"
+            deltaTone="positive"
+            accent="var(--color-success)"
+            sparkline={<TinySparkline values={fraudRateSeries.map((point) => point.blocked_amount)} />}
+          />
+        </Link>
+        <Link to="/queue">
+          <BigNumber
+            label="Throughput (24h)"
+            value={k.txn_count_24h}
+            format={fmtNumber}
+            delta="open analyst queue"
+            deltaTone="neutral"
+            sparkline={<TinySparkline values={fraudRateSeries.map((point) => point.txn_count)} />}
+          />
+        </Link>
+        <Link to={investigatePath({ min_score: 0.5 })}>
+          <BigNumber
+            label="Avg score"
+            value={k.avg_score_24h}
+            decimals={3}
+            format={(n) => n.toFixed(3)}
+            delta="inspect elevated scores"
+            deltaTone="neutral"
+            sparkline={<TinySparkline values={sparkline.data ?? []} />}
+          />
+        </Link>
       </div>
+
+      {/* Risk mix */}
+      <Card padding="sm">
+        <div className="flex items-center justify-between gap-4 mb-2">
+          <div>
+            <div
+              className="text-[10px] uppercase tracking-wider mb-1"
+              style={{ color: "var(--color-fg-subtle)" }}
+            >
+              Risk mix · last 24h
+            </div>
+            <div className="text-xs" style={{ color: "var(--color-fg-faint)" }}>
+              {fmtPct(highRiskShare, 1)} high risk across {fmtNumber(totalRisk24h)} scored transactions
+            </div>
+          </div>
+          <div className="text-xs font-mono" style={{ color: "var(--color-fg-subtle)" }}>
+            H {k.high_risk_24h} · M {k.medium_risk_24h} · L {k.low_risk_24h}
+          </div>
+        </div>
+        <RiskMixBar
+          high={k.high_risk_24h}
+          medium={k.medium_risk_24h}
+          low={k.low_risk_24h}
+        />
+        <div className="flex gap-3 mt-3 text-xs">
+          <Link to={investigatePath({ risk: "high" })} style={{ color: "var(--color-risk-high)" }}>
+            high risk
+          </Link>
+          <Link to={investigatePath({ risk: "medium" })} style={{ color: "var(--color-risk-medium)" }}>
+            medium risk
+          </Link>
+          <Link to={investigatePath({ risk: "low" })} style={{ color: "var(--color-risk-low)" }}>
+            low risk
+          </Link>
+        </div>
+      </Card>
 
       <div className="grid grid-cols-12 gap-4">
         {/* Main column */}
@@ -107,7 +226,7 @@ export default function Dashboard() {
             </div>
             <div style={{ width: "100%", height: 200 }}>
               <ResponsiveContainer>
-                <AreaChart data={ts.data ?? []}>
+                <AreaChart data={fraudRateSeries}>
                   <defs>
                     <linearGradient id="gAll" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--color-fg-subtle)" stopOpacity={0.4} />
@@ -120,26 +239,58 @@ export default function Dashboard() {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                   <XAxis dataKey="timestamp" stroke="var(--color-fg-faint)" fontSize={10} />
-                  <YAxis stroke="var(--color-fg-faint)" fontSize={10} />
+                  <YAxis yAxisId="left" stroke="var(--color-fg-faint)" fontSize={10} />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="var(--color-warning)"
+                    fontSize={10}
+                    tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+                  />
                   <Tooltip
                     contentStyle={{
                       background: "var(--color-surface)",
                       border: "1px solid var(--color-border)",
                       fontSize: 11,
                     }}
+                    formatter={(value, name) => {
+                      if (typeof value !== "number") return value;
+                      if (name === "Fraud rate") return fmtPct(value, 1);
+                      if (name === "Blocked amount") return fmtCurrencyCompact(value);
+                      return fmtNumber(value);
+                    }}
                   />
                   <Area
-                    type="monotone" dataKey="txn_count"
+                    yAxisId="left" type="monotone" dataKey="txn_count"
                     stroke="var(--color-fg-subtle)" strokeWidth={1.5}
                     fill="url(#gAll)" name="All txns"
                   />
                   <Area
-                    type="monotone" dataKey="fraud_count"
+                    yAxisId="left" type="monotone" dataKey="fraud_count"
                     stroke="var(--color-brand)" strokeWidth={2}
                     fill="url(#gFraud)" name="Flagged"
                   />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="fraud_rate"
+                    stroke="var(--color-warning)"
+                    strokeWidth={1.5}
+                    dot={false}
+                    name="Fraud rate"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
+            </div>
+            <div className="mt-2 text-xs" style={{ color: "var(--color-fg-faint)" }}>
+              Peak flagged bucket: {peakBucket.timestamp} · {peakBucket.fraud_count} flagged · {fmtCurrencyCompact(peakBucket.blocked_amount)} blocked
+              <Link
+                to={investigatePath({ risk: "high" })}
+                className="ml-2"
+                style={{ color: "var(--color-brand)" }}
+              >
+                review flagged
+              </Link>
             </div>
           </Card>
 
@@ -157,8 +308,30 @@ export default function Dashboard() {
                   Hour of day × day of week, by transaction volume
                 </div>
               </div>
+              <div className="flex rounded-md border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
+                {[
+                  { value: "count", label: "count" },
+                  { value: "fraud_rate", label: "fraud %" },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    className="px-2 py-1 text-[10px] font-mono"
+                    style={{
+                      background: heatmapMode === option.value
+                        ? "var(--color-brand-soft)"
+                        : "var(--color-surface)",
+                      color: heatmapMode === option.value
+                        ? "var(--color-brand)"
+                        : "var(--color-fg-subtle)",
+                    }}
+                    onClick={() => setHeatmapMode(option.value as HeatmapMode)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            {heatmap.data && <Heatmap data={heatmap.data} mode="count" />}
+            {heatmap.data && <Heatmap data={heatmap.data} mode={heatmapMode} />}
           </Card>
 
           {/* Type breakdown */}
@@ -200,6 +373,17 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            <div className="flex gap-3 mt-2 text-xs flex-wrap">
+              {(types.data ?? []).slice(0, 5).map((item) => (
+                <Link
+                  key={item.type}
+                  to={investigatePath({ txn_type: item.type })}
+                  style={{ color: "var(--color-brand)" }}
+                >
+                  {item.type}
+                </Link>
+              ))}
+            </div>
           </Card>
 
           {/* Recent high-risk */}
@@ -218,11 +402,11 @@ export default function Dashboard() {
                 </div>
               </div>
               <Link
-                to="/queue"
+                to={investigatePath({ risk: "high" })}
                 className="text-xs flex items-center gap-1"
                 style={{ color: "var(--color-brand)" }}
               >
-                full queue <ArrowRight size={12} />
+                investigate <ArrowRight size={12} />
               </Link>
             </div>
 
@@ -250,6 +434,10 @@ export default function Dashboard() {
                       style={{ color: "var(--color-fg-muted)" }}
                     >
                       {item.name_orig} → {item.name_dest}
+                      <span style={{ color: "var(--color-fg-faint)" }}>
+                        {" · "}
+                        {item.type}
+                      </span>
                     </span>
                     <span className="font-mono text-right">
                       {fmtCurrencyCompact(item.amount)}
@@ -270,9 +458,162 @@ export default function Dashboard() {
         {/* Right sidebar */}
         <div className="col-span-12 lg:col-span-4 space-y-4">
           <ReplayControl />
+          <Card padding="md">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock size={14} style={{ color: "var(--color-fg-subtle)" }} />
+              <span
+                className="text-[10px] uppercase tracking-wider"
+                style={{ color: "var(--color-fg-subtle)" }}
+              >
+                Action queue
+              </span>
+            </div>
+            <div className="space-y-3">
+              <ActionRow
+                label="High-risk pending"
+                value={fmtNumber(pendingHighRisk.data?.total ?? k.open_cases)}
+                tone="var(--color-danger)"
+              />
+              <ActionRow
+                label="Oldest visible case"
+                value={oldestPending ? fmtRelativeTime(oldestPending.scored_at) : "none"}
+                tone="var(--color-fg)"
+              />
+              <ActionRow
+                label="Peak hour"
+                value={`${peakBucket.timestamp} · ${peakBucket.fraud_count}`}
+                tone="var(--color-warning)"
+              />
+            </div>
+            <Link
+              to={investigatePath({ risk: "high", decision: "pending" })}
+              className="mt-4 text-xs inline-flex items-center gap-1"
+              style={{ color: "var(--color-brand)" }}
+            >
+              open investigation filters <ArrowRight size={12} />
+            </Link>
+          </Card>
           <LiveTicker />
         </div>
       </div>
+    </div>
+  );
+}
+
+function investigatePath(params: Record<string, string | number | undefined>) {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") {
+      searchParams.set(key, String(value));
+    }
+  });
+  const search = searchParams.toString();
+  return search ? `/investigate?${search}` : "/investigate";
+}
+
+function TinySparkline({ values }: { values: number[] }) {
+  const width = 56;
+  const height = 18;
+  const max = Math.max(...values, 0);
+  const min = Math.min(...values, 0);
+  const span = max - min || 1;
+  const points = values
+    .slice(-20)
+    .map((value, index, arr) => {
+      const x = arr.length === 1 ? width : (index / (arr.length - 1)) * width;
+      const y = height - ((value - min) / span) * height;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <svg width={width} height={height} role="img" aria-label="trend">
+      <polyline
+        points={points}
+        fill="none"
+        stroke="var(--color-brand)"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function TinyBars({ values }: { values: number[] }) {
+  const max = Math.max(...values, 1);
+  const colors = [
+    "var(--color-risk-low)",
+    "var(--color-risk-medium)",
+    "var(--color-risk-high)",
+  ];
+  return (
+    <div className="flex items-end gap-0.5 h-[18px]" aria-label="risk mix bars">
+      {values.map((value, index) => (
+        <div
+          key={index}
+          className="w-1.5 rounded-sm"
+          style={{
+            height: `${Math.max(3, (value / max) * 18)}px`,
+            background: colors[index],
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function RiskMixBar({
+  high,
+  medium,
+  low,
+}: {
+  high: number;
+  medium: number;
+  low: number;
+}) {
+  const total = high + medium + low || 1;
+  return (
+    <div className="h-3 rounded-sm overflow-hidden flex" style={{ background: "var(--color-surface)" }}>
+      <div
+        style={{
+          width: `${(high / total) * 100}%`,
+          background: "var(--color-risk-high)",
+        }}
+      />
+      <div
+        style={{
+          width: `${(medium / total) * 100}%`,
+          background: "var(--color-risk-medium)",
+        }}
+      />
+      <div
+        style={{
+          width: `${(low / total) * 100}%`,
+          background: "var(--color-risk-low)",
+        }}
+      />
+    </div>
+  );
+}
+
+function ActionRow({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-xs" style={{ color: "var(--color-fg-subtle)" }}>
+        {label}
+      </span>
+      <span className="font-mono text-sm" style={{ color: tone }}>
+        {value}
+      </span>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from "recharts";
-import { Activity, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Activity, AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { Metric } from "@/components/ui/Metric";
@@ -104,6 +105,13 @@ export default function Drift() {
           <div className="text-xs font-mono text-right" style={{ color: "var(--color-fg-faint)" }}>
             <div>baseline: {fmtNumber(data.n_baseline)} txns</div>
             <div>recent: {fmtNumber(data.n_recent)} txns</div>
+            <Link
+              to="/models"
+              className="inline-flex items-center gap-1 mt-2"
+              style={{ color: "var(--color-brand)" }}
+            >
+              model registry <ArrowRight size={12} />
+            </Link>
           </div>
         </div>
 
@@ -112,6 +120,15 @@ export default function Drift() {
           <span><span style={{ color: "var(--color-warning)" }}>●</span> warning (0.1 - 0.25)</span>
           <span><span style={{ color: "var(--color-danger)" }}>●</span> alert (&gt; 0.25)</span>
         </div>
+        {data.overall_status !== "stable" && (
+          <Link
+            to="/investigate?risk=high"
+            className="inline-flex items-center gap-1 mt-3 text-xs"
+            style={{ color: "var(--color-brand)" }}
+          >
+            inspect high-risk recent cases <ArrowRight size={12} />
+          </Link>
+        )}
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

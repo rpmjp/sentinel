@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import get_settings
-from api.routers import auth, dashboard, drift, health, investigate, models, queue, replay, scoring, tuner
+from api.routers import auth, dashboard, drift, entities, health, investigate, models, queue, replay, scoring, tuner, watchlists
 settings = get_settings()
 
 logging.basicConfig(
@@ -67,6 +67,8 @@ app.include_router(replay.router)
 app.include_router(drift.router)
 app.include_router(models.router)
 app.include_router(investigate.router)
+app.include_router(entities.router)
+app.include_router(watchlists.router)
 
 
 @app.get("/", include_in_schema=False)
