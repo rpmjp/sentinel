@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends
@@ -28,15 +29,26 @@ class KpiResponse(BaseModel):
     low_risk_24h: int
 
 
-class SeriesPoint(BaseModel):
-    label: str
-    value: float
+class TimeseriesPoint(BaseModel):
+    timestamp: str
+    txn_count: int
+    fraud_count: int
+    blocked_amount: float
+    avg_score: float
 
 
-class TrendResponse(BaseModel):
-    fraud_rate: list[SeriesPoint]
-    blocked_amount: list[SeriesPoint]
-    false_positive_rate: list[SeriesPoint]
+class HeatmapCell(BaseModel):
+    day: int  # 0-6, Mon-Sun
+    hour: int  # 0-23
+    count: int
+    fraud_rate: float
+
+
+class TypeBreakdown(BaseModel):
+    type: str
+    high: int
+    medium: int
+    low: int
 
 
 @router.get("/kpis", response_model=KpiResponse)
@@ -126,10 +138,116 @@ async def sparkline_scores(
     if not rows:
         return [0.0]
 
-    # Bucket into 20 evenly-sized chunks
     n = len(rows)
     bucket_size = max(1, n // 20)
     return [
         float(sum(rows[i : i + bucket_size]) / max(len(rows[i : i + bucket_size]), 1))
         for i in range(0, n, bucket_size)
     ][:20]
+
+
+@router.get("/timeseries", response_model=list[TimeseriesPoint])
+async def timeseries(
+    hours: int = 24,
+    db: Session = Depends(get_db),
+    ctx: AuthContext = Depends(get_current_user),
+) -> list[TimeseriesPoint]:
+    """Per-hour aggregates over the last N hours."""
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
+
+    rows = db.execute(
+        select(Transaction.received_at, Transaction.amount, Prediction.score)
+        .join(Prediction, Prediction.transaction_id == Transaction.id)
+        .where(
+            Transaction.tenant_id == ctx.tenant_id,
+            Transaction.received_at >= cutoff,
+        )
+    ).all()
+
+    if not rows:
+        # Return empty buckets so the chart still draws
+        now = datetime.now(UTC)
+        return [
+            TimeseriesPoint(
+                timestamp=(now - timedelta(hours=hours - i)).strftime("%H:%M"),
+                txn_count=0, fraud_count=0, blocked_amount=0.0, avg_score=0.0,
+            )
+            for i in range(hours)
+        ]
+
+    buckets: dict[str, dict] = defaultdict(
+        lambda: {"count": 0, "fraud": 0, "blocked": 0.0, "scores": []}
+    )
+
+    for received_at, amount, score in rows:
+        key = received_at.strftime("%H:%M")
+        b = buckets[key]
+        b["count"] += 1
+        b["scores"].append(score)
+        if score >= HIGH_THRESHOLD:
+            b["fraud"] += 1
+            b["blocked"] += amount
+
+    return [
+        TimeseriesPoint(
+            timestamp=k,
+            txn_count=v["count"],
+            fraud_count=v["fraud"],
+            blocked_amount=v["blocked"],
+            avg_score=sum(v["scores"]) / len(v["scores"]) if v["scores"] else 0.0,
+        )
+        for k, v in sorted(buckets.items())
+    ]
+
+
+@router.get("/heatmap", response_model=list[HeatmapCell])
+async def heatmap(
+    db: Session = Depends(get_db),
+    ctx: AuthContext = Depends(get_current_user),
+) -> list[HeatmapCell]:
+    """Hour-of-day x day-of-week heatmap of transaction count + fraud rate."""
+    rows = db.execute(
+        select(Transaction.received_at, Prediction.score)
+        .join(Prediction, Prediction.transaction_id == Transaction.id)
+        .where(Transaction.tenant_id == ctx.tenant_id)
+    ).all()
+
+    cells: dict[tuple[int, int], dict] = defaultdict(lambda: {"count": 0, "fraud": 0})
+    for received_at, score in rows:
+        day = received_at.weekday()  # 0=Mon
+        hour = received_at.hour
+        cells[(day, hour)]["count"] += 1
+        if score >= HIGH_THRESHOLD:
+            cells[(day, hour)]["fraud"] += 1
+
+    out: list[HeatmapCell] = []
+    for day in range(7):
+        for hour in range(24):
+            c = cells.get((day, hour), {"count": 0, "fraud": 0})
+            count = c["count"]
+            fraud_rate = (c["fraud"] / count) if count else 0.0
+            out.append(HeatmapCell(day=day, hour=hour, count=count, fraud_rate=fraud_rate))
+    return out
+
+
+@router.get("/type-breakdown", response_model=list[TypeBreakdown])
+async def type_breakdown(
+    db: Session = Depends(get_db),
+    ctx: AuthContext = Depends(get_current_user),
+) -> list[TypeBreakdown]:
+    """Stacked-bar data: transaction count by type, stratified by risk band."""
+    rows = db.execute(
+        select(Transaction.type, Prediction.risk_band, func.count(Prediction.id))
+        .join(Prediction, Prediction.transaction_id == Transaction.id)
+        .where(Transaction.tenant_id == ctx.tenant_id)
+        .group_by(Transaction.type, Prediction.risk_band)
+    ).all()
+
+    grouped: dict[str, dict[str, int]] = defaultdict(lambda: {"high": 0, "medium": 0, "low": 0})
+    for txn_type, band, count in rows:
+        grouped[txn_type][band] = int(count)
+
+    return [
+        TypeBreakdown(type=t, high=v["high"], medium=v["medium"], low=v["low"])
+        for t, v in sorted(grouped.items())
+    ]

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./index.css";
 import { router } from "./router";
 import { applyTheme, getInitialTheme } from "./lib/theme";
+import { Toaster } from "./components/Toaster";
 
 // Apply theme before first render so we don't flash the wrong color scheme
 applyTheme(getInitialTheme());
@@ -22,6 +23,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
+      <Toaster />
     </QueryClientProvider>
-  </StrictMode>
+  </StrictMode>,
 );

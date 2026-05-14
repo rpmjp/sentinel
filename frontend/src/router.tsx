@@ -1,7 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { RequireAuth } from "@/components/RequireAuth";
-import { Placeholder } from "@/pages/Placeholder";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Queue from "@/pages/Queue";
@@ -10,6 +9,7 @@ import Tuner from "@/pages/Tuner";
 import Drift from "@/pages/Drift";
 import Models from "@/pages/Models";
 import Investigate from "@/pages/Investigate";
+import Settings from "@/pages/Settings";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -29,7 +29,7 @@ export const router = createBrowserRouter([
       { path: "models", element: <Models /> },
       { path: "drift", element: <Drift /> },
       { path: "tuner", element: <Tuner /> },
-      { path: "settings", element: <Placeholder name="Settings" step="Step 3.12" /> },
+      { path: "settings", element: <Settings /> },
     ],
   },
 ]);

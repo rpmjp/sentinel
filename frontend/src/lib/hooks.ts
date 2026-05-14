@@ -1,12 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
-import type {
-  Decision,
-  FeedbackPayload,
-  QueueResponse,
-  RiskBand,
-  TransactionDetail,
-} from "./types";
+import type { FeedbackPayload, QueueResponse, TransactionDetail } from "./types";
 
 export interface DashboardKpis {
   open_cases: number;
@@ -96,13 +90,13 @@ export interface InvestigateParams {
 export interface InvestigateItem {
   transaction_id: string;
   score: number;
-  risk_band: RiskBand;
+  risk_band: "high" | "medium" | "low";
   amount: number;
   type: string;
   name_orig: string;
   name_dest: string;
   scored_at: string;
-  decision: Decision | null;
+  decision: string | null;
 }
 
 export interface InvestigateStats {
@@ -132,25 +126,12 @@ export function useInvestigate(params: InvestigateParams) {
   });
 }
 
-export function useSimilarTransactions(transactionId: string | undefined) {
-  return useQuery({
-    queryKey: ["similar-transactions", transactionId],
-    queryFn: async () => {
-      const { data } = await api.get<InvestigateItem[]>(
-        `/investigate/similar/${transactionId}`,
-      );
-      return data;
-    },
-    enabled: !!transactionId,
-  });
-}
-
 export function useBulkAction() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: {
       transaction_ids: string[];
-      decision: Decision;
+      decision: string;
       notes?: string;
     }) => {
       const { data } = await api.post<{ updated: number }>(
@@ -163,6 +144,148 @@ export function useBulkAction() {
       qc.invalidateQueries({ queryKey: ["investigate"] });
       qc.invalidateQueries({ queryKey: ["queue"] });
       qc.invalidateQueries({ queryKey: ["kpis"] });
+    },
+  });
+}
+
+export function useSimilarTransactions(transactionId: string | undefined) {
+  return useQuery({
+    queryKey: ["similar", transactionId],
+    queryFn: async () => {
+      const { data } = await api.get<InvestigateItem[]>(
+        `/investigate/similar/${transactionId}`,
+      );
+      return data;
+    },
+    enabled: !!transactionId,
+  });
+}
+
+export function useUpdateThreshold() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      modelId,
+      threshold,
+    }: {
+      modelId: string;
+      threshold: number;
+    }) => {
+      const { data } = await api.patch(`/models/${modelId}/threshold`, {
+        threshold,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["models"] });
+      qc.invalidateQueries({ queryKey: ["tuner"] });
+    },
+  });
+}
+
+export interface TimeseriesPoint {
+  timestamp: string;
+  txn_count: number;
+  fraud_count: number;
+  blocked_amount: number;
+  avg_score: number;
+}
+
+export function useTimeseries(hours = 24) {
+  return useQuery({
+    queryKey: ["timeseries", hours],
+    queryFn: async () => {
+      const { data } = await api.get<TimeseriesPoint[]>("/dashboard/timeseries", {
+        params: { hours },
+      });
+      return data;
+    },
+    refetchInterval: 10_000,
+  });
+}
+
+export interface HeatmapCell {
+  day: number;
+  hour: number;
+  count: number;
+  fraud_rate: number;
+}
+
+export function useHeatmap() {
+  return useQuery({
+    queryKey: ["heatmap"],
+    queryFn: async () => {
+      const { data } = await api.get<HeatmapCell[]>("/dashboard/heatmap");
+      return data;
+    },
+    refetchInterval: 60_000,
+  });
+}
+
+export interface TypeBreakdown {
+  type: string;
+  high: number;
+  medium: number;
+  low: number;
+}
+
+export function useTypeBreakdown() {
+  return useQuery({
+    queryKey: ["type-breakdown"],
+    queryFn: async () => {
+      const { data } = await api.get<TypeBreakdown[]>("/dashboard/type-breakdown");
+      return data;
+    },
+    refetchInterval: 30_000,
+  });
+}
+
+export interface ReplayStatus {
+  running: boolean;
+  transactions_replayed: number;
+  fraud_detected: number;
+  started_at: string | null;
+  rate_per_second: number | null;
+  elapsed_seconds: number | null;
+}
+
+export function useReplayStatus() {
+  return useQuery({
+    queryKey: ["replay-status"],
+    queryFn: async () => {
+      const { data } = await api.get<ReplayStatus>("/replay/status");
+      return data;
+    },
+    refetchInterval: 1_000,
+  });
+}
+
+export function useStartReplay() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      rate_per_second: number;
+      duration_seconds: number;
+      fraud_fraction: number;
+    }) => {
+      const { data } = await api.post<ReplayStatus>("/replay/start", payload);
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["replay-status"] });
+    },
+  });
+}
+
+export function useStopReplay() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<ReplayStatus>("/replay/stop");
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["replay-status"] });
     },
   });
 }

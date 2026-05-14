@@ -17,6 +17,7 @@ import {
   fmtCurrencyCompact, fmtRelativeTime, fmtScore, fmtNumber,
 } from "@/lib/format";
 import type { Decision, RiskBand } from "@/lib/types";
+import { toast } from "@/lib/toast";
 
 const TYPES = ["", "TRANSFER", "CASH_OUT", "CASH_IN", "PAYMENT", "DEBIT"] as const;
 
@@ -80,35 +81,47 @@ export default function Investigate() {
     }
   }
 
-  async function handleBulk(decision: Decision) {
+  async function handleBulk(decision: string) {
     if (selected.size === 0) return;
-    await bulk.mutateAsync({
-      transaction_ids: Array.from(selected),
-      decision,
-      notes: bulkNotes || undefined,
-    });
-    setSelected(new Set());
-    setBulkNotes("");
+    try {
+      const result = await bulk.mutateAsync({
+        transaction_ids: Array.from(selected),
+        decision,
+        notes: bulkNotes || undefined,
+      });
+      toast.success(
+        `Updated ${result.updated} transaction${result.updated === 1 ? "" : "s"}: ${decision.replace("_", " ")}`,
+      );
+      setSelected(new Set());
+      setBulkNotes("");
+    } catch {
+      toast.error("Bulk action failed. Please retry.");
+    }
   }
 
   async function downloadCsv() {
-    // axios doesn't natively support download streaming nicely; use fetch with same params
-    const qs = new URLSearchParams();
-    Object.entries(params).forEach(([k, v]) => {
-      if (v !== undefined && v !== "" && k !== "page" && k !== "page_size") {
-        qs.set(k, String(v));
-      }
-    });
-    const resp = await fetch(`/api/investigate/export.csv?${qs}`, {
-      headers: { Authorization: `Bearer ${getToken() ?? ""}` },
-    });
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sentinel_investigate_${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== "" && k !== "page" && k !== "page_size") {
+          qs.set(k, String(v));
+        }
+      });
+      const resp = await fetch(`/api/investigate/export.csv?${qs}`, {
+        headers: { Authorization: `Bearer ${getToken() ?? ""}` },
+      });
+      if (!resp.ok) throw new Error("export failed");
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sentinel_investigate_${Date.now()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("CSV exported");
+    } catch {
+      toast.error("CSV export failed");
+    }
   }
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / (params.page_size ?? 50))) : 1;

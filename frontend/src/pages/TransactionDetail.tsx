@@ -23,6 +23,7 @@ import {
   fmtScore,
 } from "@/lib/format";
 import type { Decision } from "@/lib/types";
+import { toast } from "@/lib/toast";
 
 export default function TransactionDetail() {
   const { id } = useParams<{ id: string }>();
@@ -70,8 +71,9 @@ export default function TransactionDetail() {
   async function handleDecision(decision: Decision) {
     try {
       await feedback.mutateAsync({ decision, notes: notes || undefined });
+      toast.success(`Decision recorded: ${decision.replace("_", " ")}`);
     } catch {
-      // optimistic: keep notes in the box so user can retry
+      toast.error("Failed to record decision. Please retry.");
     }
   }
 

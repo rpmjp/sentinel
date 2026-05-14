@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,10 @@ class ModelVersionOut(BaseModel):
     threshold: float
     created_at: datetime
     activated_at: datetime | None
+
+
+class ThresholdUpdate(BaseModel):
+    threshold: float
 
 
 @router.get("", response_model=list[ModelVersionOut])
@@ -53,3 +57,39 @@ async def list_models(
         )
         for r in rows
     ]
+
+
+@router.patch("/{model_id}/threshold", response_model=ModelVersionOut)
+async def update_threshold(
+    model_id: uuid.UUID,
+    payload: ThresholdUpdate,
+    db: Session = Depends(get_db),
+    ctx: AuthContext = Depends(get_current_user),
+) -> ModelVersionOut:
+    if ctx.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+    if not 0.0 < payload.threshold < 1.0:
+        raise HTTPException(status_code=400, detail="threshold must be in (0, 1)")
+
+    mv = (
+        db.query(ModelVersion)
+        .filter(ModelVersion.id == model_id, ModelVersion.tenant_id == ctx.tenant_id)
+        .one_or_none()
+    )
+    if mv is None:
+        raise HTTPException(status_code=404, detail="model not found")
+
+    mv.threshold = payload.threshold
+    db.commit()
+    db.refresh(mv)
+    return ModelVersionOut(
+        id=mv.id,
+        name=mv.name,
+        version=mv.version,
+        stage=mv.stage,
+        metrics=mv.metrics or {},
+        git_sha=mv.git_sha,
+        threshold=mv.threshold,
+        created_at=mv.created_at,
+        activated_at=mv.activated_at,
+    )
