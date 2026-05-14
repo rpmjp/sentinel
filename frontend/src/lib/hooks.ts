@@ -447,6 +447,20 @@ export interface UploadTransactionsResult {
   total_latency_ms: number;
 }
 
+export interface UploadAudit {
+  id: string;
+  filename: string;
+  status: "success" | "failed" | "rejected";
+  rows_uploaded: number;
+  rows_scored: number;
+  high: number;
+  medium: number;
+  low: number;
+  file_size_bytes: number;
+  error_message: string | null;
+  created_at: string;
+}
+
 export function useUploadTransactions() {
   const qc = useQueryClient();
   return useMutation({
@@ -467,7 +481,19 @@ export function useUploadTransactions() {
       qc.invalidateQueries({ queryKey: ["timeseries"] });
       qc.invalidateQueries({ queryKey: ["type-breakdown"] });
       qc.invalidateQueries({ queryKey: ["heatmap"] });
+      qc.invalidateQueries({ queryKey: ["upload-audits"] });
     },
+  });
+}
+
+export function useUploadAudits() {
+  return useQuery({
+    queryKey: ["upload-audits"],
+    queryFn: async () => {
+      const { data } = await api.get<{ items: UploadAudit[] }>("/upload/audits");
+      return data.items;
+    },
+    refetchInterval: 30_000,
   });
 }
 

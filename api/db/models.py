@@ -198,6 +198,36 @@ class WatchlistEntry(Base):
     )
 
 
+class UploadAudit(Base):
+    """Security and operational audit trail for CSV batch uploads."""
+
+    __tablename__ = "upload_audits"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    filename: Mapped[str] = mapped_column(String(256), nullable=False)
+    content_type: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)  # success|failed|rejected
+    rows_uploaded: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rows_scored: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    high_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    medium_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    low_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_upload_audits_tenant_created", "tenant_id", "created_at"),
+        Index("ix_upload_audits_tenant_status", "tenant_id", "status"),
+    )
+
+
 class Case(Base):
     """Analyst case grouping transactions, entities, and notes."""
 

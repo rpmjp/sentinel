@@ -1,11 +1,14 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import type { AxiosError } from "axios";
 import {
+  AlertCircle,
   ArrowRight,
   CheckCircle2,
   Download,
   FileSpreadsheet,
   FileUp,
+  History,
   ListChecks,
   Lock,
   UploadCloud,
@@ -14,7 +17,12 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Metric } from "@/components/ui/Metric";
 import { useAuth } from "@/lib/auth";
-import { useUploadTransactions, type UploadTransactionsResult } from "@/lib/hooks";
+import {
+  useUploadAudits,
+  useUploadTransactions,
+  type UploadAudit,
+  type UploadTransactionsResult,
+} from "@/lib/hooks";
 import { fmtNumber } from "@/lib/format";
 import { toast } from "@/lib/toast";
 
@@ -27,15 +35,34 @@ const SAMPLE_CSV = [
   "1,CASH_OUT,78000.00,C1000002,78000.00,0.00,C2000002,12000.00,90000.00",
 ].join("\n");
 
+interface UploadRowError {
+  row: number;
+  field: string;
+  message: string;
+}
+
+interface UploadErrorResponse {
+  detail?: string | {
+    message?: string;
+    errors?: UploadRowError[];
+    missing?: string[];
+  };
+}
+
 export default function Upload() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const upload = useUploadTransactions();
+  const audits = useUploadAudits();
   const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<UploadTransactionsResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [rowErrors, setRowErrors] = useState<UploadRowError[]>([]);
   const canUpload = user?.role === "senior_analyst" || user?.role === "admin";
 
   function selectFile(selected: File) {
+    setErrorMessage(null);
+    setRowErrors([]);
     if (!selected.name.toLowerCase().endsWith(".csv")) {
       toast.error("Please choose a CSV file.");
       return false;
@@ -56,11 +83,16 @@ export default function Upload() {
     }
     try {
       setResult(null);
+      setErrorMessage(null);
+      setRowErrors([]);
       const summary = await upload.mutateAsync(selected);
       setResult(summary);
       toast.success(`Scored ${summary.scored} transactions`);
-    } catch {
-      toast.error("Upload failed. Check the CSV schema and try again.");
+    } catch (error) {
+      const parsed = parseUploadError(error);
+      setErrorMessage(parsed.message);
+      setRowErrors(parsed.errors);
+      toast.error(parsed.message);
     }
   }
 
@@ -287,8 +319,166 @@ export default function Upload() {
           </Card>
         </>
       )}
+
+      {errorMessage && (
+        <UploadErrorPanel message={errorMessage} errors={rowErrors} />
+      )}
+
+      <UploadHistoryCard audits={audits.data ?? []} loading={audits.isLoading} />
     </div>
   );
+}
+
+function parseUploadError(error: unknown): { message: string; errors: UploadRowError[] } {
+  const axiosError = error as AxiosError<UploadErrorResponse>;
+  const detail = axiosError.response?.data?.detail;
+  if (typeof detail === "string") {
+    return { message: detail, errors: [] };
+  }
+  if (detail && typeof detail === "object") {
+    if (detail.errors?.length) {
+      return {
+        message: detail.message ?? "CSV validation failed",
+        errors: detail.errors,
+      };
+    }
+    if (detail.missing?.length) {
+      return {
+        message: `${detail.message ?? "CSV is missing required columns"}: ${detail.missing.join(", ")}`,
+        errors: [],
+      };
+    }
+    if (detail.message) {
+      return { message: detail.message, errors: [] };
+    }
+  }
+  if (axiosError.response?.status === 429) {
+    return { message: "Upload rate limit exceeded. Please wait before trying again.", errors: [] };
+  }
+  return { message: "Upload failed. Check the CSV schema and try again.", errors: [] };
+}
+
+function UploadErrorPanel({
+  message,
+  errors,
+}: {
+  message: string;
+  errors: UploadRowError[];
+}) {
+  return (
+    <Card padding="md">
+      <div className="flex items-start gap-3">
+        <AlertCircle size={16} className="mt-0.5 shrink-0" style={{ color: "var(--color-danger)" }} />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium" style={{ color: "var(--color-danger)" }}>
+            {message}
+          </div>
+          {errors.length > 0 && (
+            <div className="mt-3 rounded-md overflow-hidden border" style={{ borderColor: "var(--color-border)" }}>
+              {errors.slice(0, 8).map((error, index) => (
+                <div
+                  key={`${error.row}-${error.field}-${index}`}
+                  className="grid grid-cols-[70px_120px_1fr] gap-3 px-3 py-2 text-xs border-t first:border-t-0"
+                  style={{ borderColor: "var(--color-border)", color: "var(--color-fg-subtle)" }}
+                >
+                  <span className="font-mono">row {error.row}</span>
+                  <span className="font-mono truncate">{error.field}</span>
+                  <span>{error.message}</span>
+                </div>
+              ))}
+              {errors.length > 8 && (
+                <div className="px-3 py-2 text-xs" style={{ color: "var(--color-fg-faint)" }}>
+                  Showing 8 of {errors.length} row errors.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function UploadHistoryCard({
+  audits,
+  loading,
+}: {
+  audits: UploadAudit[];
+  loading: boolean;
+}) {
+  return (
+    <Card padding="none">
+      <div
+        className="px-4 py-3 border-b flex items-center justify-between"
+        style={{ borderColor: "var(--color-border)" }}
+      >
+        <div className="flex items-center gap-2">
+          <History size={14} style={{ color: "var(--color-fg-subtle)" }} />
+          <div>
+            <div className="text-sm font-medium">Recent imports</div>
+            <div className="text-[10px]" style={{ color: "var(--color-fg-faint)" }}>
+              audit trail for completed and rejected uploads
+            </div>
+          </div>
+        </div>
+      </div>
+      {loading ? (
+        <div className="p-4 text-xs" style={{ color: "var(--color-fg-subtle)" }}>
+          Loading imports…
+        </div>
+      ) : audits.length === 0 ? (
+        <div className="p-4 text-xs" style={{ color: "var(--color-fg-subtle)" }}>
+          No upload history yet.
+        </div>
+      ) : (
+        <div>
+          {audits.map((audit) => (
+            <div
+              key={audit.id}
+              className="grid grid-cols-[1fr_90px_90px_100px] gap-3 px-4 py-3 border-t text-xs items-center"
+              style={{ borderColor: "var(--color-border)" }}
+            >
+              <div className="min-w-0">
+                <div className="font-medium truncate">{audit.filename}</div>
+                <div className="mt-0.5 truncate" style={{ color: "var(--color-fg-faint)" }}>
+                  {audit.error_message ?? `${fmtBytes(audit.file_size_bytes)} · ${new Date(audit.created_at).toLocaleString()}`}
+                </div>
+              </div>
+              <StatusPill status={audit.status} />
+              <div className="font-mono" style={{ color: "var(--color-fg-subtle)" }}>
+                {fmtNumber(audit.rows_scored)} rows
+              </div>
+              <div className="font-mono text-right" style={{ color: "var(--color-risk-high)" }}>
+                {fmtNumber(audit.high)} high
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function StatusPill({ status }: { status: UploadAudit["status"] }) {
+  const colors = {
+    success: "var(--color-success)",
+    failed: "var(--color-warning)",
+    rejected: "var(--color-danger)",
+  };
+  return (
+    <span
+      className="inline-flex w-fit rounded-sm px-2 py-1 text-[10px] uppercase tracking-wider"
+      style={{ color: colors[status], background: "var(--color-surface-raised)" }}
+    >
+      {status}
+    </span>
+  );
+}
+
+function fmtBytes(bytes: number) {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${bytes} B`;
 }
 
 function GuideStep({
