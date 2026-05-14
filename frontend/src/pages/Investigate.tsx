@@ -434,7 +434,15 @@ function Results({
       ) : data?.items.length === 0 ? (
         <EmptyState
           title="No matching transactions"
-          description="Clear filters or try one of the investigation presets."
+          description="Clear filters, search a known account, or jump back to the highest-risk unresolved rows."
+          action={
+            <div className="flex justify-center gap-3 text-xs">
+              <Link to="/investigate" style={{ color: "var(--color-brand)" }}>clear filters</Link>
+              <Link to="/investigate?risk=high&decision=pending" style={{ color: "var(--color-brand)" }}>
+                high-risk pending
+              </Link>
+            </div>
+          }
         />
       ) : (
         data!.items.map((item, index) => {

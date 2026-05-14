@@ -291,6 +291,15 @@ export default function TransactionDetail() {
             </div>
           </div>
           <ShapWaterfall features={features} />
+          <PlainEnglishExplanation
+            score={data.score}
+            riskBand={data.risk_band}
+            type={data.type}
+            amount={data.amount}
+            sender={data.name_orig}
+            receiver={data.name_dest}
+            features={features}
+          />
         </Card>
 
         {/* Transaction context */}
@@ -438,6 +447,61 @@ export default function TransactionDetail() {
         initialTransactionIds={[data.transaction_id]}
         initialEntityIds={[data.name_orig, data.name_dest]}
       />
+    </div>
+  );
+}
+
+function PlainEnglishExplanation({
+  score,
+  riskBand,
+  type,
+  amount,
+  sender,
+  receiver,
+  features,
+}: {
+  score: number;
+  riskBand: string;
+  type: string;
+  amount: number;
+  sender: string;
+  receiver: string;
+  features: Array<{ name: string; value: number; contribution: number }>;
+}) {
+  const strongest = [...features].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))[0];
+  const positiveDrivers = features.filter((feature) => feature.contribution > 0).slice(0, 3);
+  return (
+    <div
+      className="mt-4 rounded-md border p-3"
+      style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}
+    >
+      <div className="text-[10px] uppercase tracking-wider mb-2" style={{ color: "var(--color-fg-subtle)" }}>
+        Analyst summary
+      </div>
+      <div className="text-sm leading-6" style={{ color: "var(--color-fg-muted)" }}>
+        Sentinel scored this {type.toLowerCase()} as <span className="font-mono" style={{ color: "var(--color-brand)" }}>{riskBand}</span>{" "}
+        risk with a {fmtScore(score)} model score. The transaction moved {fmtCurrencyCompact(amount)} from{" "}
+        <span className="font-mono">{sender}</span> to <span className="font-mono">{receiver}</span>.
+        {strongest && (
+          <>
+            {" "}The strongest model driver was <span className="font-mono">{strongest.name}</span>, which pushed the score{" "}
+            {strongest.contribution >= 0 ? "up" : "down"}.
+          </>
+        )}
+      </div>
+      {positiveDrivers.length > 0 && (
+        <div className="mt-3 flex gap-2 flex-wrap">
+          {positiveDrivers.map((feature) => (
+            <span
+              key={feature.name}
+              className="rounded-sm px-2 py-1 text-[10px] font-mono"
+              style={{ color: "var(--color-danger)", background: "var(--color-danger-soft)" }}
+            >
+              {feature.name} +{feature.contribution.toFixed(3)}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

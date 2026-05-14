@@ -20,7 +20,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from api.db.database import SessionLocal
-from api.db.models import ModelVersion, Prediction, Tenant, Transaction
+from api.db.models import Case, CaseEntity, CaseNote, CaseTransaction, ModelVersion, Prediction, Tenant, Transaction, User
 from api.services.model_service import ModelService
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -42,6 +42,7 @@ def seed(db: Session) -> None:
     )
     if existing_count > 100:
         log.info("Tenant already has %d transactions; skipping.", existing_count)
+        seed_narrative_case(db, tenant)
         return
 
     mv = (
@@ -102,6 +103,73 @@ def seed(db: Session) -> None:
 
     db.commit()
     log.info("Seeded %d transactions", len(rows))
+    seed_narrative_case(db, tenant)
+
+
+def seed_narrative_case(db: Session, tenant: Tenant) -> None:
+    existing_case = db.query(Case).filter(Case.tenant_id == tenant.id).first()
+    if existing_case is not None:
+        log.info("Tenant already has case data; skipping narrative case.")
+        return
+
+    owner = (
+        db.query(User)
+        .filter(User.tenant_id == tenant.id, User.role.in_(["senior_analyst", "admin"]))
+        .order_by(User.role.desc())
+        .first()
+    )
+    if owner is None:
+        owner = db.query(User).filter(User.tenant_id == tenant.id).first()
+    if owner is None:
+        log.warning("No demo user found; skipping narrative case.")
+        return
+
+    rows = (
+        db.query(Transaction)
+        .join(Prediction, Prediction.transaction_id == Transaction.id)
+        .filter(Transaction.tenant_id == tenant.id, Prediction.risk_band == "high")
+        .order_by(Prediction.score.desc())
+        .limit(5)
+        .all()
+    )
+    if not rows:
+        log.warning("No high-risk transactions found; skipping narrative case.")
+        return
+
+    primary = rows[0]
+    case = Case(
+        tenant_id=tenant.id,
+        title=f"Coordinated cash-out review: {primary.name_orig}",
+        description=(
+            "Demo narrative: a high-risk origin account shows large transfer/cash-out "
+            "behavior and repeated exposure to risky counterparties."
+        ),
+        status="investigating",
+        priority="critical",
+        assigned_to=owner.id,
+        created_by=owner.id,
+    )
+    db.add(case)
+    db.flush()
+
+    accounts: set[str] = set()
+    for txn in rows:
+        db.add(CaseTransaction(case_id=case.id, transaction_id=txn.id))
+        accounts.add(txn.name_orig)
+        accounts.add(txn.name_dest)
+
+    for account_id in sorted(accounts)[:8]:
+        db.add(CaseEntity(case_id=case.id, account_id=account_id, role="related"))
+
+    db.add(
+        CaseNote(
+            case_id=case.id,
+            user_id=owner.id,
+            content="Seeded demo case: linked top high-risk transfers for an end-to-end investigation walkthrough.",
+        )
+    )
+    db.commit()
+    log.info("Seeded narrative case %s", case.id)
 
 
 def main() -> None:

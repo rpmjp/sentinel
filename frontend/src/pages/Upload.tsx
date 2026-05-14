@@ -51,6 +51,7 @@ interface UploadErrorResponse {
 
 export default function Upload() {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const uploadInFlight = useRef(false);
   const upload = useUploadTransactions();
   const audits = useUploadAudits();
   const { user } = useAuth();
@@ -77,10 +78,12 @@ export default function Upload() {
 
   async function handleUpload(selected = file) {
     if (!selected) return;
+    if (uploadInFlight.current || upload.isPending) return;
     if (!canUpload) {
       toast.error("Batch upload requires a senior analyst or admin account.");
       return;
     }
+    uploadInFlight.current = true;
     try {
       setResult(null);
       setErrorMessage(null);
@@ -93,6 +96,8 @@ export default function Upload() {
       setErrorMessage(parsed.message);
       setRowErrors(parsed.errors);
       toast.error(parsed.message);
+    } finally {
+      uploadInFlight.current = false;
     }
   }
 
@@ -191,7 +196,7 @@ export default function Upload() {
             event.preventDefault();
             const dropped = event.dataTransfer.files.item(0);
             if (!dropped) return;
-            if (selectFile(dropped)) handleUpload(dropped);
+            selectFile(dropped);
           }}
           className="min-h-[240px] rounded-lg border border-dashed flex flex-col items-center justify-center gap-3 text-center cursor-pointer"
           style={{

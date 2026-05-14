@@ -40,7 +40,7 @@ export function BigNumber({
   const animated = useCountUp(value, { duration: 700, decimals });
   return (
     <div
-      className={cn("rounded-lg border p-4 flex flex-col gap-1.5", className)}
+      className={cn("kpi-card rounded-lg border p-4 flex flex-col gap-1.5", className)}
       style={{
         background: highlighted
           ? "var(--color-warning-soft)"

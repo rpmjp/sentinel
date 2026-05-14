@@ -109,6 +109,9 @@ export default function Dashboard() {
   return (
     <div className="p-6 space-y-4">
       {/* Incident pulse */}
+      <DemoGuide />
+
+      {/* Incident pulse */}
       <Card padding="sm">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3 min-w-0">
@@ -474,6 +477,41 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+function DemoGuide() {
+  const steps = [
+    { label: "1", title: "Review posture", to: "/dashboard" },
+    { label: "2", title: "Open high-risk queue", to: "/queue?risk=high" },
+    { label: "3", title: "Investigate network", to: "/investigate?risk=high" },
+    { label: "4", title: "Manage cases", to: "/cases" },
+    { label: "5", title: "Audit imports", to: "/audit" },
+  ];
+  return (
+    <Card padding="sm">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--color-fg-subtle)" }}>
+            Guided demo
+          </div>
+          <div className="text-sm font-medium">Follow the fraud investigation story</div>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {steps.map((step) => (
+            <Link
+              key={step.to}
+              to={step.to}
+              className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
+              style={{ borderColor: "var(--color-border)", background: "var(--color-surface)", color: "var(--color-fg-muted)" }}
+            >
+              <span className="font-mono" style={{ color: "var(--color-brand)" }}>{step.label}</span>
+              {step.title}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </Card>
   );
 }
 

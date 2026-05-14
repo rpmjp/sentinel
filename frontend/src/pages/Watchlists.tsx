@@ -117,6 +117,16 @@ export default function Watchlists() {
           <EmptyState
             title="No watchlist entries"
             description="Add blocked or trusted accounts from here or from transaction/entity details."
+            action={
+              <div className="flex justify-center gap-3 text-xs">
+                <Link to="/investigate?risk=high" style={{ color: "var(--color-brand)" }}>
+                  find risky accounts
+                </Link>
+                <Link to="/queue" style={{ color: "var(--color-brand)" }}>
+                  review queue
+                </Link>
+              </div>
+            }
           />
         ) : (
           data?.items.map((item) => (

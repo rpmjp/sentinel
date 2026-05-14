@@ -102,7 +102,17 @@ export default function Cases() {
         ) : data?.items.length === 0 ? (
           <EmptyState
             title="No cases found"
-            description="Create a case from a transaction, entity profile, or selected investigation rows."
+            description="Cases are created from suspicious transactions, entity profiles, or selected investigation rows."
+            action={
+              <div className="flex justify-center gap-3 text-xs">
+                <Link to="/investigate?risk=high" style={{ color: "var(--color-brand)" }}>
+                  find high-risk rows
+                </Link>
+                <Link to="/queue" style={{ color: "var(--color-brand)" }}>
+                  open queue
+                </Link>
+              </div>
+            }
           />
         ) : (
           data?.items.map((item) => (

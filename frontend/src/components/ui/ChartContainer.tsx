@@ -1,14 +1,13 @@
-import { useLayoutEffect, useRef, useState, type ReactElement } from "react";
-import { ResponsiveContainer } from "recharts";
+import { cloneElement, useLayoutEffect, useRef, useState, type ReactElement } from "react";
 
 interface ChartContainerProps {
   height: number;
-  children: ReactElement;
+  children: ReactElement<Record<string, unknown>>;
 }
 
 export function ChartContainer({ height, children }: ChartContainerProps) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [ready, setReady] = useState(false);
+  const [width, setWidth] = useState(0);
 
   useLayoutEffect(() => {
     const node = ref.current;
@@ -17,22 +16,21 @@ export function ChartContainer({ height, children }: ChartContainerProps) {
     function measure() {
       if (!ref.current) return;
       const rect = ref.current.getBoundingClientRect();
-      setReady(rect.width > 0 && rect.height > 0);
+      setWidth(Math.floor(rect.width));
     }
 
-    measure();
+    const frame = window.requestAnimationFrame(measure);
     const observer = new ResizeObserver(measure);
     observer.observe(node);
-    return () => observer.disconnect();
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, []);
 
   return (
     <div ref={ref} style={{ width: "100%", height, minWidth: 0 }}>
-      {ready && (
-        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-          {children}
-        </ResponsiveContainer>
-      )}
+      {width > 1 && cloneElement(children, { width, height })}
     </div>
   );
 }

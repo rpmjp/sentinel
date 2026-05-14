@@ -11,6 +11,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import ValidationError
+from sqlalchemy import inspect
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from api.db.database import get_db
@@ -31,8 +33,8 @@ ALLOWED_CONTENT_TYPES = {
     "application/vnd.ms-excel",
     "text/plain",
 }
-RATE_LIMIT_PER_MINUTE = 3
-RATE_LIMIT_PER_HOUR = 20
+RATE_LIMIT_PER_MINUTE = 30
+RATE_LIMIT_PER_HOUR = 200
 CHUNK_SIZE = 100
 FORMULA_PREFIXES = ("=", "+", "-", "@")
 TEXT_COLUMNS = {"type", "nameOrig", "nameDest"}
@@ -128,7 +130,9 @@ def _record_upload_audit(
     medium_count: int = 0,
     low_count: int = 0,
     error_message: str | None = None,
-) -> UploadAudit:
+) -> UploadAudit | None:
+    if not _ensure_upload_audit_table(db):
+        return None
     audit = UploadAudit(
         tenant_id=ctx.tenant_id,
         user_id=ctx.user_id,
@@ -145,6 +149,26 @@ def _record_upload_audit(
     )
     db.add(audit)
     return audit
+
+
+def _upload_audit_table_exists(db: Session) -> bool:
+    try:
+        return inspect(db.get_bind()).has_table("upload_audits")
+    except SQLAlchemyError:
+        db.rollback()
+        return False
+
+
+def _ensure_upload_audit_table(db: Session) -> bool:
+    try:
+        bind = db.get_bind()
+        if inspect(bind).has_table("upload_audits"):
+            return True
+        UploadAudit.__table__.create(bind=bind, checkfirst=True)
+        return True
+    except SQLAlchemyError:
+        db.rollback()
+        return False
 
 
 def _parse_csv(contents: bytes) -> tuple[list[TransactionIn], list[dict[str, Any]]]:
@@ -312,13 +336,21 @@ async def list_upload_audits(
     db: Session = Depends(get_db),
     ctx: AuthContext = Depends(get_current_user),
 ) -> dict[str, list[dict[str, Any]]]:
-    rows = (
-        db.query(UploadAudit)
-        .filter(UploadAudit.tenant_id == ctx.tenant_id)
-        .order_by(UploadAudit.created_at.desc())
-        .limit(10)
-        .all()
-    )
+    if not _ensure_upload_audit_table(db):
+        return {"items": []}
+
+    try:
+        rows = (
+            db.query(UploadAudit)
+            .filter(UploadAudit.tenant_id == ctx.tenant_id)
+            .order_by(UploadAudit.created_at.desc())
+            .limit(10)
+            .all()
+        )
+    except SQLAlchemyError:
+        db.rollback()
+        return {"items": []}
+
     return {
         "items": [
             {

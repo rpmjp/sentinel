@@ -494,6 +494,7 @@ export function useUploadAudits() {
       return data.items;
     },
     refetchInterval: 30_000,
+    retry: false,
   });
 }
 

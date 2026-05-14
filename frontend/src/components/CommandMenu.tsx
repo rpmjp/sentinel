@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Activity,
+  ClipboardList,
   Briefcase,
   Cpu,
   Inbox,
@@ -30,6 +31,7 @@ const COMMANDS: CommandItem[] = [
   { label: "Dashboard", hint: "Command center", to: "/dashboard", icon: LayoutDashboard },
   { label: "Queue", hint: "Analyst worklist", to: "/queue", icon: Inbox },
   { label: "Upload", hint: "Score a CSV batch", to: "/upload", icon: Upload },
+  { label: "Audit log", hint: "Upload and security events", to: "/audit", icon: ClipboardList },
   { label: "Cases", hint: "Case management", to: "/cases", icon: Briefcase },
   {
     label: "Overdue cases",
@@ -71,9 +73,18 @@ export function CommandMenu({ open, onOpenChange }: CommandMenuProps) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return COMMANDS;
-    return COMMANDS.filter((item) =>
+    const matches = COMMANDS.filter((item) =>
       `${item.label} ${item.hint}`.toLowerCase().includes(q),
     );
+    return [
+      {
+        label: `Search investigations for "${query.trim()}"`,
+        hint: "Find matching transaction IDs, accounts, and counterparties",
+        to: `/investigate?q=${encodeURIComponent(query.trim())}`,
+        icon: Search,
+      },
+      ...matches,
+    ];
   }, [query]);
 
   useEffect(() => {
