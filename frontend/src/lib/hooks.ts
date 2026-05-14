@@ -431,3 +431,34 @@ export function useStopReplay() {
     },
   });
 }
+
+export interface GeoBucket {
+  code: string;
+  name: string;
+  count: number;
+  fraud_count: number;
+  total_amount: number;
+  fraud_rate: number;
+}
+
+export function useGeoWorld() {
+  return useQuery({
+    queryKey: ["geo-world"],
+    queryFn: async () => {
+      const { data } = await api.get<GeoBucket[]>("/dashboard/geo/world");
+      return data;
+    },
+    refetchInterval: 60_000,
+  });
+}
+
+export function useGeoUs() {
+  return useQuery({
+    queryKey: ["geo-us"],
+    queryFn: async () => {
+      const { data } = await api.get<GeoBucket[]>("/dashboard/geo/us");
+      return data;
+    },
+    refetchInterval: 60_000,
+  });
+}

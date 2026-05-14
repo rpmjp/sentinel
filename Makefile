@@ -41,6 +41,9 @@ seed:  ## Seed demo tenant, users, and model_version into Postgres
 seed-txns:  ## Seed 500 scored demo transactions into Postgres
 	uv run python -m scripts.seed_transactions
 
+seed-geo:  ## Seed synthetic geographic enrichment for all account IDs
+	uv run python -m scripts.seed_geo
+
 serve:  ## Start FastAPI dev server on http://localhost:8000
 	uv run uvicorn api.main:app --reload --port 8000
 

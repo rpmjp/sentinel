@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import Integer, func, select
 from sqlalchemy.orm import Session
 
 from api.db.database import get_db
@@ -244,4 +244,99 @@ async def type_breakdown(
     return [
         TypeBreakdown(type=t, high=v["high"], medium=v["medium"], low=v["low"])
         for t, v in sorted(grouped.items())
+    ]
+
+class GeoBucket(BaseModel):
+    code: str  # ISO-3 country, or US state abbr
+    name: str
+    count: int
+    fraud_count: int
+    total_amount: float
+    fraud_rate: float
+
+
+@router.get("/geo/world", response_model=list[GeoBucket])
+async def geo_world(
+    db: Session = Depends(get_db),
+    ctx: AuthContext = Depends(get_current_user),
+) -> list[GeoBucket]:
+    """Per-country aggregates. Joins transactions to account_geo on name_orig."""
+    from api.db.models import AccountGeo
+
+    rows = db.execute(
+        select(
+            AccountGeo.country,
+            AccountGeo.country_name,
+            func.count(Transaction.id),
+            func.sum(
+                func.cast(Prediction.score >= HIGH_THRESHOLD, Integer)
+            ),
+            func.coalesce(func.sum(Transaction.amount), 0.0),
+        )
+        .select_from(Transaction)
+        .join(Prediction, Prediction.transaction_id == Transaction.id)
+        .join(
+            AccountGeo,
+            (AccountGeo.account_id == Transaction.name_orig)
+            & (AccountGeo.tenant_id == Transaction.tenant_id),
+        )
+        .where(Transaction.tenant_id == ctx.tenant_id)
+        .group_by(AccountGeo.country, AccountGeo.country_name)
+    ).all()
+
+    return [
+        GeoBucket(
+            code=country,
+            name=country_name,
+            count=int(count),
+            fraud_count=int(fraud or 0),
+            total_amount=float(total),
+            fraud_rate=(int(fraud or 0) / int(count)) if count else 0.0,
+        )
+        for country, country_name, count, fraud, total in rows
+    ]
+
+
+@router.get("/geo/us", response_model=list[GeoBucket])
+async def geo_us(
+    db: Session = Depends(get_db),
+    ctx: AuthContext = Depends(get_current_user),
+) -> list[GeoBucket]:
+    """Per-US-state aggregates. Only USA-country accounts are included."""
+    from api.db.models import AccountGeo
+
+    rows = db.execute(
+        select(
+            AccountGeo.region,
+            func.count(Transaction.id),
+            func.sum(
+                func.cast(Prediction.score >= HIGH_THRESHOLD, Integer)
+            ),
+            func.coalesce(func.sum(Transaction.amount), 0.0),
+        )
+        .select_from(Transaction)
+        .join(Prediction, Prediction.transaction_id == Transaction.id)
+        .join(
+            AccountGeo,
+            (AccountGeo.account_id == Transaction.name_orig)
+            & (AccountGeo.tenant_id == Transaction.tenant_id),
+        )
+        .where(
+            Transaction.tenant_id == ctx.tenant_id,
+            AccountGeo.country == "USA",
+            AccountGeo.region.is_not(None),
+        )
+        .group_by(AccountGeo.region)
+    ).all()
+
+    return [
+        GeoBucket(
+            code=region,
+            name=region,
+            count=int(count),
+            fraud_count=int(fraud or 0),
+            total_amount=float(total),
+            fraud_rate=(int(fraud or 0) / int(count)) if count else 0.0,
+        )
+        for region, count, fraud, total in rows
     ]

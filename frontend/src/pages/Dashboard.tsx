@@ -11,6 +11,7 @@ import { RiskBadge } from "@/components/ui/Badge";
 import { Heatmap } from "@/components/Heatmap";
 import { LiveTicker } from "@/components/LiveTicker";
 import { ReplayControl } from "@/components/ReplayControl";
+import { GeoMap } from "@/components/GeoMap";
 import {
   useKpis, useQueue, useTimeseries, useHeatmap, useTypeBreakdown, useSparkline,
 } from "@/lib/hooks";
@@ -425,6 +426,9 @@ export default function Dashboard() {
               ))}
             </div>
           </Card>
+
+          {/* Geographic distribution */}
+          <GeoMap />
 
           {/* Recent high-risk */}
           <Card padding="none">
