@@ -64,7 +64,7 @@ export default function EntityProfile() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4 max-w-6xl">
+      <div className="p-6 space-y-4">
         <Card padding="none">
           <SkeletonRows rows={5} columns="1fr 120px 120px" />
         </Card>
@@ -74,7 +74,7 @@ export default function EntityProfile() {
 
   if (error || !data) {
     return (
-      <div className="p-6 max-w-3xl">
+      <div className="p-6">
         <Card>
           <EmptyState
             title="Entity not found"
@@ -88,7 +88,7 @@ export default function EntityProfile() {
   const { summary } = data;
 
   return (
-    <div className="p-6 space-y-4 max-w-6xl">
+    <div className="p-6 space-y-4">
       <Card padding="md">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -193,8 +193,8 @@ export default function EntityProfile() {
                 <Area
                   type="monotone"
                   dataKey="avg_score"
-                  stroke="var(--color-brand)"
-                  fill="var(--color-brand-soft)"
+                  stroke="var(--color-info)"
+                  fill="var(--color-info-soft)"
                   name="Avg score"
                 />
               </AreaChart>
@@ -303,7 +303,13 @@ function NetworkGraph({
                 cx={pos.x}
                 cy={pos.y}
                 r={size}
-                fill={node.risk_score >= 0.5 ? "var(--color-risk-high)" : "var(--color-risk-low)"}
+                fill={
+                  node.role === "entity"
+                    ? "var(--color-brand)"
+                    : node.risk_score >= 0.5
+                    ? "var(--color-risk-high)"
+                    : "var(--color-info)"
+                }
                 opacity={node.role === "entity" ? 1 : 0.78}
               />
               <text

@@ -12,22 +12,26 @@ export interface DashboardKpis {
   low_risk_24h: number;
 }
 
-export function useKpis() {
+export function useKpis(hours = 24) {
   return useQuery({
-    queryKey: ["kpis"],
+    queryKey: ["kpis", hours],
     queryFn: async () => {
-      const { data } = await api.get<DashboardKpis>("/dashboard/kpis");
+      const { data } = await api.get<DashboardKpis>("/dashboard/kpis", {
+        params: { hours },
+      });
       return data;
     },
     refetchInterval: 10_000,
   });
 }
 
-export function useSparkline() {
+export function useSparkline(hours = 24) {
   return useQuery({
-    queryKey: ["sparkline"],
+    queryKey: ["sparkline", hours],
     queryFn: async () => {
-      const { data } = await api.get<number[]>("/dashboard/sparkline");
+      const { data } = await api.get<number[]>("/dashboard/sparkline", {
+        params: { hours },
+      });
       return data;
     },
     refetchInterval: 30_000,

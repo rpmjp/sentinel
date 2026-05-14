@@ -156,7 +156,7 @@ export default function Investigate() {
   const returnTo = `${location.pathname}${location.search}`;
 
   return (
-    <div className="p-6 space-y-4 max-w-6xl">
+    <div className="p-6 space-y-4">
       {/* Stats strip */}
       {data && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

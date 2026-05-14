@@ -51,7 +51,9 @@ export function TopBar({ title, onCommandOpen }: TopBarProps) {
           />
           model healthy
         </span>
-        <span className="font-mono">p50 22ms</span>
+        <span className="font-mono" style={{ color: "var(--color-info)" }}>
+          p50 22ms
+        </span>
 
         <button
           onClick={onCommandOpen}

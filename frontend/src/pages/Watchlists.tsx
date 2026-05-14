@@ -46,7 +46,7 @@ export default function Watchlists() {
   }
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl">
+    <div className="p-6 space-y-4">
       <Card padding="md">
         <div
           className="text-[10px] uppercase tracking-wider mb-3"

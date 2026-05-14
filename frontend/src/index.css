@@ -6,6 +6,10 @@
   --color-brand-hover: #c14a25;
   --color-brand-soft: rgba(216, 90, 48, 0.12);
   --color-brand-fg: #ffffff;
+  --color-info: #4aa3ff;
+  --color-info-soft: rgba(74, 163, 255, 0.14);
+  --color-accent: #a8c66c;
+  --color-accent-soft: rgba(168, 198, 108, 0.14);
 
   /* Risk semantic colors */
   --color-risk-high: #d85a30;
@@ -56,6 +60,10 @@
   --color-brand: #993c1d;
   --color-brand-hover: #7a3017;
   --color-brand-soft: rgba(216, 90, 48, 0.1);
+  --color-info: #1f6fbf;
+  --color-info-soft: rgba(31, 111, 191, 0.12);
+  --color-accent: #5f731f;
+  --color-accent-soft: rgba(95, 115, 31, 0.12);
   --color-success: #0f6e56;
   --color-warning: #854f0b;
 }

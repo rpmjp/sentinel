@@ -74,7 +74,7 @@ export default function Drift() {
   const StatusIcon = STATUS_ICON[data.overall_status];
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl">
+    <div className="p-6 space-y-4">
       <Card padding="md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -169,7 +169,7 @@ export default function Drift() {
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="baseline_count" fill="var(--color-fg-subtle)" name="baseline" />
-              <Bar dataKey="recent_count" fill="var(--color-brand)" name="recent" />
+              <Bar dataKey="recent_count" fill="var(--color-info)" name="recent" />
             </BarChart>
           </ResponsiveContainer>
         </div>

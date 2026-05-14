@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -53,10 +53,11 @@ class TypeBreakdown(BaseModel):
 
 @router.get("/kpis", response_model=KpiResponse)
 async def kpis(
+    hours: int = Query(24, ge=0, le=87600, description="0 means all time"),
     db: Session = Depends(get_db),
     ctx: AuthContext = Depends(get_current_user),
 ) -> KpiResponse:
-    cutoff = datetime.now(UTC) - timedelta(hours=24)
+    cutoff = None if hours == 0 else datetime.now(UTC) - timedelta(hours=hours)
 
     open_cases = db.execute(
         select(func.count(Transaction.id))
@@ -69,43 +70,33 @@ async def kpis(
         )
     ).scalar_one()
 
-    blocked_amount = db.execute(
+    blocked_q = (
         select(func.coalesce(func.sum(Transaction.amount), 0.0))
         .join(Prediction, Prediction.transaction_id == Transaction.id)
-        .where(
-            Transaction.tenant_id == ctx.tenant_id,
-            Prediction.score >= HIGH_THRESHOLD,
-            Transaction.received_at >= cutoff,
-        )
-    ).scalar_one()
-
-    txn_count = db.execute(
-        select(func.count(Transaction.id)).where(
-            Transaction.tenant_id == ctx.tenant_id,
-            Transaction.received_at >= cutoff,
-        )
-    ).scalar_one()
-
-    avg_score = db.execute(
+        .where(Transaction.tenant_id == ctx.tenant_id, Prediction.score >= HIGH_THRESHOLD)
+    )
+    txn_q = select(func.count(Transaction.id)).where(Transaction.tenant_id == ctx.tenant_id)
+    avg_q = (
         select(func.coalesce(func.avg(Prediction.score), 0.0))
         .join(Transaction, Transaction.id == Prediction.transaction_id)
-        .where(
-            Transaction.tenant_id == ctx.tenant_id,
-            Prediction.scored_at >= cutoff,
-        )
-    ).scalar_one()
-
-    bands = dict(
-        db.execute(
-            select(Prediction.risk_band, func.count(Prediction.id))
-            .join(Transaction, Transaction.id == Prediction.transaction_id)
-            .where(
-                Transaction.tenant_id == ctx.tenant_id,
-                Prediction.scored_at >= cutoff,
-            )
-            .group_by(Prediction.risk_band)
-        ).all()
+        .where(Transaction.tenant_id == ctx.tenant_id)
     )
+    bands_q = (
+        select(Prediction.risk_band, func.count(Prediction.id))
+        .join(Transaction, Transaction.id == Prediction.transaction_id)
+        .where(Transaction.tenant_id == ctx.tenant_id)
+        .group_by(Prediction.risk_band)
+    )
+    if cutoff is not None:
+        blocked_q = blocked_q.where(Transaction.received_at >= cutoff)
+        txn_q = txn_q.where(Transaction.received_at >= cutoff)
+        avg_q = avg_q.where(Prediction.scored_at >= cutoff)
+        bands_q = bands_q.where(Prediction.scored_at >= cutoff)
+
+    blocked_amount = db.execute(blocked_q).scalar_one()
+    txn_count = db.execute(txn_q).scalar_one()
+    avg_score = db.execute(avg_q).scalar_one()
+    bands = dict(db.execute(bands_q).all())
 
     return KpiResponse(
         open_cases=int(open_cases),
@@ -120,20 +111,21 @@ async def kpis(
 
 @router.get("/sparkline", response_model=list[float])
 async def sparkline_scores(
+    hours: int = Query(24, ge=0, le=87600, description="0 means all time"),
     db: Session = Depends(get_db),
     ctx: AuthContext = Depends(get_current_user),
 ) -> list[float]:
     """Returns last 20 risk-band counts in chronological buckets, for sparklines."""
-    cutoff = datetime.now(UTC) - timedelta(hours=24)
-    rows = db.execute(
+    cutoff = None if hours == 0 else datetime.now(UTC) - timedelta(hours=hours)
+    q = (
         select(Prediction.score)
         .join(Transaction, Transaction.id == Prediction.transaction_id)
-        .where(
-            Transaction.tenant_id == ctx.tenant_id,
-            Prediction.scored_at >= cutoff,
-        )
+        .where(Transaction.tenant_id == ctx.tenant_id)
         .order_by(Prediction.scored_at)
-    ).scalars().all()
+    )
+    if cutoff is not None:
+        q = q.where(Prediction.scored_at >= cutoff)
+    rows = db.execute(q).scalars().all()
 
     if not rows:
         return [0.0]
@@ -148,23 +140,25 @@ async def sparkline_scores(
 
 @router.get("/timeseries", response_model=list[TimeseriesPoint])
 async def timeseries(
-    hours: int = 24,
+    hours: int = Query(24, ge=0, le=87600, description="0 means all time"),
     db: Session = Depends(get_db),
     ctx: AuthContext = Depends(get_current_user),
 ) -> list[TimeseriesPoint]:
     """Per-hour aggregates over the last N hours."""
-    cutoff = datetime.now(UTC) - timedelta(hours=hours)
+    cutoff = None if hours == 0 else datetime.now(UTC) - timedelta(hours=hours)
 
-    rows = db.execute(
+    q = (
         select(Transaction.received_at, Transaction.amount, Prediction.score)
         .join(Prediction, Prediction.transaction_id == Transaction.id)
-        .where(
-            Transaction.tenant_id == ctx.tenant_id,
-            Transaction.received_at >= cutoff,
-        )
-    ).all()
+        .where(Transaction.tenant_id == ctx.tenant_id)
+    )
+    if cutoff is not None:
+        q = q.where(Transaction.received_at >= cutoff)
+    rows = db.execute(q).all()
 
     if not rows:
+        if hours == 0:
+            return []
         # Return empty buckets so the chart still draws
         now = datetime.now(UTC)
         return [
@@ -180,7 +174,7 @@ async def timeseries(
     )
 
     for received_at, amount, score in rows:
-        key = received_at.strftime("%H:%M")
+        key = received_at.strftime("%m-%d") if hours == 0 or hours > 72 else received_at.strftime("%H:%M")
         b = buckets[key]
         b["count"] += 1
         b["scores"].append(score)

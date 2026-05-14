@@ -45,7 +45,7 @@ export default function TransactionDetail() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4 max-w-5xl">
+      <div className="p-6 space-y-4">
         <Card padding="none">
           <SkeletonRows rows={4} columns="1fr 90px 120px" />
         </Card>
@@ -105,7 +105,7 @@ export default function TransactionDetail() {
   }
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl">
+    <div className="p-6 space-y-4">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">

@@ -77,7 +77,7 @@ export default function Tuner() {
   }
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl">
+    <div className="p-6 space-y-4">
       <Card padding="md">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -280,7 +280,7 @@ export default function Tuner() {
               <Line
                 type="monotone"
                 dataKey="recall"
-                stroke="var(--color-warning)"
+                stroke="var(--color-accent)"
                 strokeWidth={2}
                 dot={false}
               />
@@ -295,7 +295,7 @@ export default function Tuner() {
         </div>
         <div className="flex gap-4 text-xs font-mono mt-2" style={{ color: "var(--color-fg-subtle)" }}>
           <span><span style={{ color: "var(--color-success)" }}>●</span> precision</span>
-          <span><span style={{ color: "var(--color-warning)" }}>●</span> recall</span>
+          <span><span style={{ color: "var(--color-accent)" }}>●</span> recall</span>
         </div>
       </Card>
     </div>

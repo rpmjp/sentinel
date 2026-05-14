@@ -61,7 +61,7 @@ export default function Models() {
   }
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl">
+    <div className="p-6 space-y-4">
       <Card padding="md">
         <div className="flex items-center gap-2 mb-1">
           <Cpu size={14} style={{ color: "var(--color-fg-subtle)" }} />

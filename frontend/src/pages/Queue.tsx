@@ -42,7 +42,7 @@ export default function Queue() {
   }
 
   return (
-    <div className="p-6 space-y-4 max-w-6xl">
+    <div className="p-6 space-y-4">
       {/* Filter bar */}
       <Card padding="sm">
         <div className="flex items-center gap-4 flex-wrap">

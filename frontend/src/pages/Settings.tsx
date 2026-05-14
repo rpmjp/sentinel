@@ -61,7 +61,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-6 space-y-4 max-w-3xl">
+    <div className="p-6 space-y-4">
       <Section title="Profile" icon={UserIcon}>
         <Row label="Name"><span className="font-medium">{user?.full_name ?? "—"}</span></Row>
         <Row label="Email"><span className="font-mono text-xs">{user?.email ?? "—"}</span></Row>

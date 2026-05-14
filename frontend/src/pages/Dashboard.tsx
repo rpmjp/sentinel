@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, AlertCircle, Clock, ShieldAlert } from "lucide-react";
 import {
@@ -19,16 +19,40 @@ import {
 } from "@/lib/format";
 
 type HeatmapMode = "count" | "fraud_rate";
+type DashboardRange = "24h" | "7d" | "30d" | "all";
+
+const RANGE_OPTIONS: Array<{ value: DashboardRange; label: string; hours: number }> = [
+  { value: "24h", label: "24h", hours: 24 },
+  { value: "7d", label: "7d", hours: 168 },
+  { value: "30d", label: "30d", hours: 720 },
+  { value: "all", label: "All", hours: 0 },
+];
 
 export default function Dashboard() {
   const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>("count");
-  const kpis = useKpis();
-  const ts = useTimeseries(24);
+  const [range, setRange] = useState<DashboardRange>("24h");
+  const [autoFallback, setAutoFallback] = useState(false);
+  const rangeConfig = RANGE_OPTIONS.find((option) => option.value === range) ?? RANGE_OPTIONS[0];
+  const allKpis = useKpis(0);
+  const kpis = useKpis(rangeConfig.hours);
+  const ts = useTimeseries(rangeConfig.hours);
   const heatmap = useHeatmap();
   const types = useTypeBreakdown();
-  const sparkline = useSparkline();
+  const sparkline = useSparkline(rangeConfig.hours);
   const recent = useQueue({ risk: "high", page_size: 5 });
   const pendingHighRisk = useQueue({ risk: "high", page_size: 1 });
+  useEffect(() => {
+    if (
+      range === "24h" &&
+      kpis.data &&
+      allKpis.data &&
+      kpis.data.txn_count_24h === 0 &&
+      allKpis.data.txn_count_24h > 0
+    ) {
+      setRange("all");
+      setAutoFallback(true);
+    }
+  }, [allKpis.data, kpis.data, range]);
 
   if (kpis.isLoading) {
     return (
@@ -50,8 +74,10 @@ export default function Dashboard() {
   }
 
   const k = kpis.data;
-  const totalRisk24h = k.high_risk_24h + k.medium_risk_24h + k.low_risk_24h;
-  const highRiskShare = totalRisk24h > 0 ? k.high_risk_24h / totalRisk24h : 0;
+  const windowLabel = rangeConfig.label;
+  const windowCopy = range === "all" ? "all time" : `last ${windowLabel}`;
+  const totalRiskWindow = k.high_risk_24h + k.medium_risk_24h + k.low_risk_24h;
+  const highRiskShare = totalRiskWindow > 0 ? k.high_risk_24h / totalRiskWindow : 0;
   const fraudRateSeries = (ts.data ?? []).map((point) => ({
     ...point,
     fraud_rate: point.txn_count > 0 ? point.fraud_count / point.txn_count : 0,
@@ -104,9 +130,23 @@ export default function Dashboard() {
                 className="text-xs truncate"
                 style={{ color: "var(--color-fg-subtle)" }}
               >
-                {k.high_risk_24h} high-risk in 24h · {fmtCurrencyCompact(k.blocked_amount_24h)} exposure blocked · {topRiskType.type} leading risk type
+                {k.high_risk_24h} high-risk in {windowCopy} · {fmtCurrencyCompact(k.blocked_amount_24h)} exposure blocked · {topRiskType.type} leading risk type
               </div>
             </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {autoFallback && (
+              <span className="text-xs" style={{ color: "var(--color-info)" }}>
+                No scored volume in 24h. Showing all-time activity.
+              </span>
+            )}
+            <RangeSelector
+              value={range}
+              onChange={(next) => {
+                setRange(next);
+                setAutoFallback(false);
+              }}
+            />
           </div>
           <Link
             to={topTypePath}
@@ -125,7 +165,7 @@ export default function Dashboard() {
             label="Open cases"
             value={k.open_cases}
             format={fmtNumber}
-            delta={`${k.high_risk_24h} high-risk in 24h`}
+            delta={`${k.high_risk_24h} high-risk in ${windowCopy}`}
             deltaTone={k.open_cases > 0 ? "negative" : "neutral"}
             highlighted={k.open_cases > 100}
             accent={k.open_cases > 100 ? "var(--color-warning)" : undefined}
@@ -134,7 +174,7 @@ export default function Dashboard() {
         </Link>
         <Link to={investigatePath({ risk: "high" })}>
           <BigNumber
-            label="Blocked (24h)"
+            label={`Blocked (${windowLabel})`}
             value={k.blocked_amount_24h}
             format={fmtCurrencyCompact}
             delta="review high-risk exposure"
@@ -145,7 +185,7 @@ export default function Dashboard() {
         </Link>
         <Link to="/queue">
           <BigNumber
-            label="Throughput (24h)"
+            label={`Throughput (${windowLabel})`}
             value={k.txn_count_24h}
             format={fmtNumber}
             delta="open analyst queue"
@@ -174,10 +214,10 @@ export default function Dashboard() {
               className="text-[10px] uppercase tracking-wider mb-1"
               style={{ color: "var(--color-fg-subtle)" }}
             >
-              Risk mix · last 24h
+              Risk mix · {windowCopy}
             </div>
             <div className="text-xs" style={{ color: "var(--color-fg-faint)" }}>
-              {fmtPct(highRiskShare, 1)} high risk across {fmtNumber(totalRisk24h)} scored transactions
+              {fmtPct(highRiskShare, 1)} high risk across {fmtNumber(totalRiskWindow)} scored transactions
             </div>
           </div>
           <div className="text-xs font-mono" style={{ color: "var(--color-fg-subtle)" }}>
@@ -213,10 +253,10 @@ export default function Dashboard() {
                   className="text-[10px] uppercase tracking-wider mb-1"
                   style={{ color: "var(--color-fg-subtle)" }}
                 >
-                  Transaction volume · last 24h
+                  Transaction volume · {windowCopy}
                 </div>
                 <div className="text-xs" style={{ color: "var(--color-fg-faint)" }}>
-                  {ts.data?.length ?? 0} hourly buckets · auto-refresh every 10s
+                  {ts.data?.length ?? 0} {rangeConfig.hours > 72 || rangeConfig.hours === 0 ? "daily" : "hourly"} buckets · auto-refresh every 10s
                 </div>
               </div>
               <div className="flex gap-3 text-[10px] font-mono" style={{ color: "var(--color-fg-subtle)" }}>
@@ -243,7 +283,7 @@ export default function Dashboard() {
                   <YAxis
                     yAxisId="right"
                     orientation="right"
-                    stroke="var(--color-warning)"
+                    stroke="var(--color-info)"
                     fontSize={10}
                     tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
                   />
@@ -274,7 +314,7 @@ export default function Dashboard() {
                     yAxisId="right"
                     type="monotone"
                     dataKey="fraud_rate"
-                    stroke="var(--color-warning)"
+                    stroke="var(--color-info)"
                     strokeWidth={1.5}
                     dot={false}
                     name="Fraud rate"
@@ -482,7 +522,7 @@ export default function Dashboard() {
               <ActionRow
                 label="Peak hour"
                 value={`${peakBucket.timestamp} · ${peakBucket.fraud_count}`}
-                tone="var(--color-warning)"
+                tone="var(--color-info)"
               />
             </div>
             <Link
@@ -509,6 +549,39 @@ function investigatePath(params: Record<string, string | number | undefined>) {
   });
   const search = searchParams.toString();
   return search ? `/investigate?${search}` : "/investigate";
+}
+
+function RangeSelector({
+  value,
+  onChange,
+}: {
+  value: DashboardRange;
+  onChange: (value: DashboardRange) => void;
+}) {
+  return (
+    <div
+      className="flex rounded-md border overflow-hidden"
+      style={{ borderColor: "var(--color-border)" }}
+    >
+      {RANGE_OPTIONS.map((option) => (
+        <button
+          key={option.value}
+          className="px-2 py-1 text-[10px] font-mono"
+          style={{
+            background: value === option.value
+              ? "var(--color-brand-soft)"
+              : "var(--color-surface)",
+            color: value === option.value
+              ? "var(--color-brand)"
+              : "var(--color-fg-subtle)",
+          }}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function TinySparkline({ values }: { values: number[] }) {
