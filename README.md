@@ -27,7 +27,7 @@ A full-stack fraud operations platform that scores transactions in **8.5ms**, ex
 |--------|-------|
 | **Test PR-AUC** | **0.992** on hidden test set, never used for selection |
 | **Recall at production threshold** | **99.5%** fraud detection |
-| ⚡ **Single-prediction latency** | **8.5ms** including SHAP attribution |
+| **Single-prediction latency** | **8.5ms** including SHAP attribution |
 | **Modeled net savings** | **$1.23M** at cost-optimized threshold |
 | **Training dataset** | **6.36M** transactions from PaySim |
 | **REST API endpoints** | **50+** across 14 router modules |
