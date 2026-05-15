@@ -30,7 +30,7 @@ DEMO_TENANT_SLUG = "demo-bank-01"
 DEMO_PASSWORD = "demopass123"
 
 DEMO_USERS = [
-    {"email": "admin@sentinel.demo", "full_name": "Alex Rivera", "role": "admin"},
+    {"email": "admin@sentinel.demo", "full_name": "Robert Jean Pierre", "role": "admin"},
     {"email": "senior@sentinel.demo", "full_name": "Maya Chen", "role": "senior_analyst"},
     {"email": "analyst@sentinel.demo", "full_name": "James Okafor", "role": "analyst"},
 ]
@@ -49,6 +49,11 @@ def seed(db: Session) -> None:
     for u in DEMO_USERS:
         existing = db.query(User).filter(User.email == u["email"]).one_or_none()
         if existing is not None:
+            if existing.full_name != u["full_name"] or existing.role != u["role"]:
+                existing.full_name = u["full_name"]
+                existing.role = u["role"]
+                log.info("Updated user %s (%s)", u["email"], u["role"])
+                continue
             log.info("User %s exists", u["email"])
             continue
         db.add(

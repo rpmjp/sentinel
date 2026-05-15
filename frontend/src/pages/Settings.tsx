@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   User as UserIcon,
@@ -8,6 +9,10 @@ import {
   Shield,
   Save,
   AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  Upload,
+  XCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
@@ -16,6 +21,13 @@ import { useAuth } from "@/lib/auth";
 import { useUpdateThreshold } from "@/lib/hooks";
 import { fmtRelativeTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
+
+const ROLE_CAPABILITIES = [
+  { label: "Review queue", analyst: true, senior_analyst: true, admin: true },
+  { label: "Create cases", analyst: true, senior_analyst: true, admin: true },
+  { label: "Batch upload", analyst: false, senior_analyst: true, admin: true },
+  { label: "Tune threshold", analyst: false, senior_analyst: false, admin: true },
+];
 
 interface ModelRow {
   id: string;
@@ -62,20 +74,48 @@ export default function Settings() {
 
   return (
     <div className="p-6 space-y-4">
-      <Section title="Profile" icon={UserIcon}>
-        <Row label="Name"><span className="font-medium">{user?.full_name ?? "—"}</span></Row>
-        <Row label="Email"><span className="font-mono text-xs">{user?.email ?? "—"}</span></Row>
-        <Row label="Role"><RoleBadge role={user?.role ?? ""} /></Row>
-      </Section>
+      <div className="grid lg:grid-cols-[1fr_360px] gap-4">
+        <div className="space-y-4">
+          <Section title="Profile" icon={UserIcon}>
+            <Row label="Name"><span className="font-medium">{user?.full_name ?? "—"}</span></Row>
+            <Row label="Email"><span className="font-mono text-xs">{user?.email ?? "—"}</span></Row>
+            <Row label="Role"><RoleBadge role={user?.role ?? ""} /></Row>
+          </Section>
 
-      <Section title="Tenant" icon={Building2}>
-        <Row label="Slug"><span className="font-mono text-xs">{user?.tenant_slug ?? "—"}</span></Row>
-        <Row label="ID">
-          <span className="font-mono text-xs" style={{ color: "var(--color-fg-faint)" }}>
-            {user?.tenant_id ?? "—"}
-          </span>
-        </Row>
-      </Section>
+          <Section title="Tenant" icon={Building2}>
+            <Row label="Slug"><span className="font-mono text-xs">{user?.tenant_slug ?? "—"}</span></Row>
+            <Row label="ID">
+              <span className="font-mono text-xs break-all text-right" style={{ color: "var(--color-fg-faint)" }}>
+                {user?.tenant_id ?? "—"}
+              </span>
+            </Row>
+            <div className="rounded-md border p-3 text-xs" style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}>
+              <div className="font-medium mb-1">Demo tenant scope</div>
+              <div style={{ color: "var(--color-fg-subtle)" }}>
+                All queue, case, upload, and audit records are isolated to this tenant.
+              </div>
+            </div>
+          </Section>
+        </div>
+
+        <Section title="Role capabilities" icon={Shield}>
+          <div className="space-y-2">
+            {ROLE_CAPABILITIES.map((capability) => {
+              const allowed = user?.role ? capability[user.role] : false;
+              return (
+                <div key={capability.label} className="flex items-center justify-between gap-3 text-sm">
+                  <span style={{ color: "var(--color-fg-muted)" }}>{capability.label}</span>
+                  {allowed ? (
+                    <CheckCircle2 size={14} style={{ color: "var(--color-success)" }} />
+                  ) : (
+                    <XCircle size={14} style={{ color: "var(--color-fg-faint)" }} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+      </div>
 
       <Section title="Production model" icon={Cpu}>
         {prodModel ? (
@@ -84,6 +124,14 @@ export default function Settings() {
             <Row label="Activated">
               <span style={{ color: "var(--color-fg-muted)" }}>{fmtRelativeTime(prodModel.created_at)}</span>
             </Row>
+            <div className="flex gap-3 text-xs">
+              <Link to="/models" className="inline-flex items-center gap-1" style={{ color: "var(--color-brand)" }}>
+                model registry <ArrowRight size={12} />
+              </Link>
+              <Link to="/tuner" className="inline-flex items-center gap-1" style={{ color: "var(--color-brand)" }}>
+                threshold tuner <ArrowRight size={12} />
+              </Link>
+            </div>
             <div className="my-3 border-t" style={{ borderColor: "var(--color-border)" }} />
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -133,8 +181,15 @@ export default function Settings() {
           <span style={{ color: "var(--color-fg-muted)" }}>Use /auth/login to obtain a bearer token</span>
         </Row>
         <Row label="Audit log">
-          <span style={{ color: "var(--color-fg-muted)" }}>All decisions recorded in analyst_decisions</span>
+          <Link to="/audit" className="inline-flex items-center gap-1" style={{ color: "var(--color-brand)" }}>
+            review upload events <ArrowRight size={12} />
+          </Link>
         </Row>
+        <div className="grid md:grid-cols-3 gap-2 pt-2">
+          <SecurityLimit icon={Upload} label="CSV cap" value="5 MB" />
+          <SecurityLimit icon={Shield} label="Upload roles" value="senior/admin" />
+          <SecurityLimit icon={AlertCircle} label="Rate limit" value="30/min" />
+        </div>
       </Section>
     </div>
   );
@@ -191,5 +246,25 @@ function Toggle({ label, enabled }: { label: string; enabled?: boolean }) {
           style={{ left: on ? "16px" : "2px" }} />
       </span>
     </button>
+  );
+}
+
+function SecurityLimit({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-md border px-3 py-2" style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}>
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider" style={{ color: "var(--color-fg-faint)" }}>
+        <Icon size={11} />
+        {label}
+      </div>
+      <div className="font-mono text-sm mt-1">{value}</div>
+    </div>
   );
 }

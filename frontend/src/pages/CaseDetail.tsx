@@ -223,7 +223,7 @@ export default function CaseDetail() {
               data.transactions.map((item, index) => (
                 <div
                   key={`${item.transaction_id}-${index}`}
-                  className="grid grid-cols-[65px_70px_1fr_100px_100px_28px] gap-3 px-4 py-3 border-t items-center text-sm"
+                  className="grid min-w-[680px] grid-cols-[65px_70px_1fr_100px_100px_28px] gap-3 px-4 py-3 border-t items-center text-sm"
                   style={{ borderColor: "var(--color-border)" }}
                 >
                   <RiskBadge risk={item.risk_band} />
@@ -243,6 +243,7 @@ export default function CaseDetail() {
                     onClick={() => removeTransaction(item.transaction_id)}
                     style={{ color: "var(--color-fg-faint)" }}
                     aria-label="remove transaction"
+                    title="Remove transaction"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -281,7 +282,7 @@ export default function CaseDetail() {
               data.entities.map((item) => (
                 <div
                   key={item.account_id}
-                  className="grid grid-cols-[1fr_100px_110px_28px] gap-3 px-4 py-3 border-t items-center text-sm"
+                  className="grid min-w-[520px] grid-cols-[1fr_100px_110px_28px] gap-3 px-4 py-3 border-t items-center text-sm"
                   style={{ borderColor: "var(--color-border)" }}
                 >
                   <Link
@@ -299,6 +300,7 @@ export default function CaseDetail() {
                     onClick={() => removeEntity(item.account_id)}
                     style={{ color: "var(--color-fg-faint)" }}
                     aria-label="remove entity"
+                    title="Remove entity"
                   >
                     <Trash2 size={13} />
                   </button>

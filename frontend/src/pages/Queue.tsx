@@ -125,7 +125,7 @@ export default function Queue() {
       {/* Table */}
       <Card padding="none">
         <div
-          className="grid grid-cols-[60px_70px_1fr_110px_110px_100px] gap-3 px-4 py-2.5 border-b text-[10px] uppercase tracking-wider"
+          className="grid min-w-[720px] grid-cols-[60px_70px_1fr_110px_110px_100px] gap-3 px-4 py-2.5 border-b text-[10px] uppercase tracking-wider"
           style={{
             background: "var(--color-surface)",
             color: "var(--color-fg-subtle)",
@@ -170,7 +170,7 @@ export default function Queue() {
                   });
                 }
               }}
-              className="grid grid-cols-[60px_70px_1fr_110px_110px_100px] gap-3 px-4 py-3 border-t items-center text-sm transition-colors hover:bg-[var(--color-surface-elevated)]"
+              className="grid min-w-[720px] grid-cols-[60px_70px_1fr_110px_110px_100px] gap-3 px-4 py-3 border-t items-center text-sm transition-colors hover:bg-[var(--color-surface-elevated)]"
               style={{ borderColor: "var(--color-border)" }}
             >
               <RiskBadge risk={item.risk_band} />

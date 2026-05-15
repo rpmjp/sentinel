@@ -412,7 +412,7 @@ function Results({
   return (
     <Card padding="none">
       <div
-        className="grid grid-cols-[32px_60px_70px_1fr_110px_110px_100px] gap-3 px-4 py-2.5 border-b text-[10px] uppercase tracking-wider"
+        className="grid min-w-[820px] grid-cols-[32px_60px_70px_1fr_110px_110px_100px] gap-3 px-4 py-2.5 border-b text-[10px] uppercase tracking-wider"
         style={{ background: "var(--color-surface)", color: "var(--color-fg-subtle)", borderColor: "var(--color-border)" }}
       >
         <button onClick={onToggleAll} aria-label="select all">
@@ -456,7 +456,7 @@ function Results({
               onKeyDown={(event) => {
                 if (event.key === "Enter") onOpenTransaction(item.transaction_id);
               }}
-              className="grid grid-cols-[32px_60px_70px_1fr_110px_110px_100px] gap-3 px-4 py-3 border-t items-center text-sm transition-colors hover:bg-[var(--color-surface-elevated)]"
+              className="grid min-w-[820px] grid-cols-[32px_60px_70px_1fr_110px_110px_100px] gap-3 px-4 py-3 border-t items-center text-sm transition-colors hover:bg-[var(--color-surface-elevated)]"
               style={{ borderColor: "var(--color-border)" }}
             >
               <button

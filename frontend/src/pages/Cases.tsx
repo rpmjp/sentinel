@@ -77,7 +77,7 @@ export default function Cases() {
 
       <Card padding="none">
         <div
-          className="grid grid-cols-[1fr_120px_100px_90px_90px_120px] gap-3 px-4 py-2.5 border-b text-[10px] uppercase tracking-wider"
+          className="grid min-w-[760px] grid-cols-[1fr_120px_100px_90px_90px_120px] gap-3 px-4 py-2.5 border-b text-[10px] uppercase tracking-wider"
           style={{
             background: "var(--color-surface)",
             borderColor: "var(--color-border)",
@@ -119,7 +119,7 @@ export default function Cases() {
             <Link
               key={item.id}
               to={`/cases/${item.id}`}
-              className="grid grid-cols-[1fr_120px_100px_90px_90px_120px] gap-3 px-4 py-3 border-t items-center text-sm hover:bg-[var(--color-surface-elevated)]"
+              className="grid min-w-[760px] grid-cols-[1fr_120px_100px_90px_90px_120px] gap-3 px-4 py-3 border-t items-center text-sm hover:bg-[var(--color-surface-elevated)]"
               style={{ borderColor: "var(--color-border)" }}
             >
               <div className="min-w-0">

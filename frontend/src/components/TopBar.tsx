@@ -78,7 +78,7 @@ export function TopBar({ title, onCommandOpen, onMenuClick }: TopBarProps) {
           <Search size={12} />
           <span>Search</span>
           <span className="font-mono text-[10px]" style={{ color: "var(--color-fg-faint)" }}>
-            Ctrl K
+            Ctrl K / /
           </span>
         </button>
 

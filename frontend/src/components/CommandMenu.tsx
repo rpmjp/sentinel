@@ -30,9 +30,12 @@ interface CommandItem {
 const COMMANDS: CommandItem[] = [
   { label: "Dashboard", hint: "Command center", to: "/dashboard", icon: LayoutDashboard },
   { label: "Queue", hint: "Analyst worklist", to: "/queue", icon: Inbox },
+  { label: "High-risk queue", hint: "Queue filtered to urgent items", to: "/queue?risk=high", icon: Inbox },
   { label: "Upload", hint: "Score a CSV batch", to: "/upload", icon: Upload },
+  { label: "Upload sample CSV", hint: "Open guided batch upload workflow", to: "/upload", icon: Upload },
   { label: "Audit log", hint: "Upload and security events", to: "/audit", icon: ClipboardList },
   { label: "Cases", hint: "Case management", to: "/cases", icon: Briefcase },
+  { label: "Critical cases", hint: "Highest priority investigations", to: "/cases?priority=critical", icon: Briefcase },
   {
     label: "Overdue cases",
     hint: "SLA attention needed",
@@ -59,6 +62,8 @@ const COMMANDS: CommandItem[] = [
     icon: Search,
   },
   { label: "Watchlists", hint: "Blocked and trusted accounts", to: "/watchlists", icon: ListChecks },
+  { label: "Blocked watchlist", hint: "Review blocked accounts", to: "/watchlists", icon: ListChecks },
+  { label: "Trusted watchlist", hint: "Review trusted accounts", to: "/watchlists", icon: ListChecks },
   { label: "Models", hint: "Registry and production model", to: "/models", icon: Cpu },
   { label: "Drift", hint: "Monitor feature shift", to: "/drift", icon: Activity },
   { label: "Tuner", hint: "Optimize threshold", to: "/tuner", icon: Sliders },
@@ -92,6 +97,10 @@ export function CommandMenu({ open, onOpenChange }: CommandMenuProps) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         onOpenChange(!open);
+      }
+      if (event.key === "/" && !open && !isEditableTarget(event.target)) {
+        event.preventDefault();
+        onOpenChange(true);
       }
       if (event.key === "Escape") {
         onOpenChange(false);
@@ -196,4 +205,10 @@ export function CommandMenu({ open, onOpenChange }: CommandMenuProps) {
       </div>
     </div>
   );
+}
+
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  const tagName = target.tagName.toLowerCase();
+  return tagName === "input" || tagName === "textarea" || tagName === "select" || target.isContentEditable;
 }

@@ -2,7 +2,7 @@ import { AlertCircle, CheckCircle2, FileWarning } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState, SkeletonRows } from "@/components/ui/States";
 import { useUploadAudits, type UploadAudit } from "@/lib/hooks";
-import { fmtNumber } from "@/lib/format";
+import { fmtNumber, fmtRelativeTime } from "@/lib/format";
 
 export default function Audit() {
   const audits = useUploadAudits();
@@ -34,7 +34,7 @@ export default function Audit() {
 
       <Card padding="none">
         <div
-          className="grid grid-cols-[1fr_100px_100px_110px_140px] gap-3 px-4 py-2.5 border-b text-[10px] uppercase tracking-wider"
+          className="grid min-w-[760px] grid-cols-[minmax(260px,1fr)_100px_100px_110px_140px] gap-3 px-4 py-2.5 border-b text-[10px] uppercase tracking-wider"
           style={{ background: "var(--color-surface)", borderColor: "var(--color-border)", color: "var(--color-fg-subtle)" }}
         >
           <div>Event</div>
@@ -78,15 +78,19 @@ function AuditRow({ item }: { item: UploadAudit }) {
 
   return (
     <div
-      className="grid grid-cols-[1fr_100px_100px_110px_140px] gap-3 px-4 py-3 border-t items-center text-sm"
+      className="grid min-w-[760px] grid-cols-[minmax(260px,1fr)_100px_100px_110px_140px] gap-3 px-4 py-3 border-t items-center text-sm"
       style={{ borderColor: "var(--color-border)" }}
     >
       <div className="min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <Icon size={14} style={{ color }} />
-          <span className="font-medium truncate">{item.filename}</span>
+          <span className="font-medium truncate" title={item.filename}>{item.filename}</span>
         </div>
-        <div className="text-xs mt-0.5 truncate" style={{ color: "var(--color-fg-faint)" }}>
+        <div
+          className="text-xs mt-0.5 break-words"
+          style={{ color: "var(--color-fg-faint)" }}
+          title={item.error_message ?? `${fmtBytes(item.file_size_bytes)} uploaded`}
+        >
           {item.error_message ?? `${fmtBytes(item.file_size_bytes)} uploaded`}
         </div>
       </div>
@@ -97,8 +101,12 @@ function AuditRow({ item }: { item: UploadAudit }) {
       <span className="font-mono text-xs" style={{ color: "var(--color-risk-high)" }}>
         {fmtNumber(item.high)} high
       </span>
-      <span className="font-mono text-xs text-right" style={{ color: "var(--color-fg-faint)" }}>
-        {new Date(item.created_at).toLocaleString()}
+      <span
+        className="font-mono text-xs text-right"
+        style={{ color: "var(--color-fg-faint)" }}
+        title={new Date(item.created_at).toLocaleString()}
+      >
+        {fmtRelativeTime(item.created_at)}
       </span>
     </div>
   );
